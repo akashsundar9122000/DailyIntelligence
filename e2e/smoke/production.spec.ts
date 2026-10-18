@@ -31,9 +31,14 @@ for (const path of ["/", "/login", "/sources", "/status", "/privacy", "/terms", 
 }
 
 test("the scheduler's endpoints refuse a caller without the secret", async ({ request }) => {
-  for (const path of ["/api/cron/daily"]) {
-    expect([401, 503]).toContain((await request.get(path)).status());
+  // 401, not 503: production has a secret, and a 503 here would mean it had gone missing and the 15-minute tick was failing.
+  for (const path of ["/api/cron/daily", "/api/cron/tick"]) {
+    expect((await request.get(path)).status(), path).toBe(401);
   }
+});
+
+test("a signed-out request for a reader's data export is refused", async ({ request }) => {
+  expect((await request.get("/api/me/export")).status()).toBe(401);
 });
 
 test("the developer pages and the outbox do not exist in production", async ({ request }) => {

@@ -17,13 +17,13 @@ test.describe("the landing page", () => {
     expect(errors).toEqual([]);
   });
 
-  test("shows no story it does not have: before the first edition, it says so", async ({ page }) => {
-    // The suite's database has no stories. The live column must not fill the space with anything news-like.
+  test("shows the real front page, each story with its publisher and time", async ({ page }) => {
+    // The suite's seeded edition (e2e/support/seed.ts). The empty state is covered by tests/components/front-page.test.tsx.
     await page.goto("/");
     const column = page.getByRole("complementary", { name: "The front page, live" });
-    await expect(column.getByText("The first edition is being set.")).toBeVisible();
-    for (const source of publicDirectory().onPress) await expect(column.getByText(source.name, { exact: true })).toBeVisible();
-    await expect(page.getByText("Awaiting first report").first()).toBeVisible();
+    await expect(column.getByText("Seaside city council approves a longer cycle lane")).toBeVisible();
+    await expect(column.getByText(/Alpha \+ 2 more/)).toBeVisible();
+    await expect(page.getByText(/^Updated \d{1,2}:\d{2}/).first()).toBeVisible();
   });
 
   test("labels every drawing of how it works as an illustration", async ({ page }) => {
@@ -66,9 +66,10 @@ test.describe("the trust pages", () => {
     await expect(page.getByRole("link", { name: /Read their terms/ })).toHaveCount(directory.onPress.length + directory.pending.length + directory.notIncluded.length);
   });
 
-  test("the status page says plainly that nothing has run yet", async ({ page }) => {
+  test("the status page says when each source last answered", async ({ page }) => {
     await page.goto("/status");
-    await expect(page.getByText(/No source has been registered yet|Has not answered yet/).first()).toBeVisible();
+    await expect(page.getByText("E2E Official Bureau")).toBeVisible();
+    await expect(page.getByText(/Last answered \d+ min ago/).first()).toBeVisible();
   });
 
   for (const [path, heading] of [

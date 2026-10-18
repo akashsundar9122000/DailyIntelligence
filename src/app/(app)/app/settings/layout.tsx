@@ -10,6 +10,8 @@ import { PillTabs } from "@/components/ui/pill-tabs";
  */
 export const SETTINGS_TABS = [
   { href: "/app/settings/account", label: "Account" },
+  { href: "/app/settings/interests", label: "Interests" },
+  { href: "/app/settings/reading", label: "Reading" },
   { href: "/app/settings/appearance", label: "Appearance" },
   { href: "/app/settings/security", label: "Security" },
   { href: "/app/settings/data", label: "Data & privacy" },

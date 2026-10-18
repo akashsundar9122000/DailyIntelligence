@@ -24,7 +24,7 @@ export class AppError extends Error {
 /*
  * Another user's resource is reported as NOT FOUND, never as forbidden. A 403
  * confirms the thing exists, which is itself a leak: it lets anybody enumerate
- * which portfolio ids are real.
+ * which bookmark, collection or session ids are real.
  */
 export const notFound = (what = "That") => new AppError("NOT_FOUND", `${what} was not found.`);
 export const forbidden = (message = "You do not have permission to do that.") => new AppError("FORBIDDEN", message);

@@ -15,7 +15,7 @@ test.describe("settings", () => {
     await page.goto("/app/settings");
     await expect(page).toHaveURL(/\/app\/settings\/account$/);
     const tabs = page.getByRole("navigation", { name: "Settings sections" });
-    await expect(tabs.getByRole("link")).toHaveText(["Account", "Appearance", "Security", "Data & privacy"]);
+    await expect(tabs.getByRole("link")).toHaveText(["Account", "Interests", "Reading", "Appearance", "Security", "Data & privacy"]);
   });
 
   test("changes the display name, and the shell shows it", async ({ page }) => {

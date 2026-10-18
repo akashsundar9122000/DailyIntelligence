@@ -20,7 +20,7 @@ export const WORLD_REGIONS = [
 
 export type WorldRegion = (typeof WORLD_REGIONS)[number]["slug"];
 
-/** Indian states and union territories, by the codes GDELT's ADM1 uses after the "IN" prefix. */
+/** Indian states and union territories, by this product's short code. GDELT's FIPS codes map to these in lib/ingestion/geo.ts. */
 export const INDIAN_STATES = [
   { code: "AP", label: "Andhra Pradesh" },
   { code: "AR", label: "Arunachal Pradesh" },

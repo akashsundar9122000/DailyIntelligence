@@ -8,33 +8,29 @@
 import { sql } from "drizzle-orm";
 import { boolean, check, index, integer, pgTable, primaryKey, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
+import {
+  FEEDBACK_KINDS,
+  INTEREST_KINDS,
+  INTEREST_ORIGINS,
+  INTEREST_STANCES,
+  REPORT_REASONS,
+  REPORT_STATUSES,
+  type FeedbackKind,
+  type InterestKind,
+  type InterestOrigin,
+  type InterestStance,
+  type ReportReason,
+  type ReportStatus,
+} from "@/lib/reader-vocab";
+
 import { inVocab, namedTimestamp, optionalTimestamp, primaryId } from "./_shared";
+
+export * from "@/lib/reader-vocab";
 import { users } from "./identity";
 import { rawSourceItems, sources, stories } from "./news";
 
-/**
- * What an interest row is about. `category` and `state` are vocabularies
- * (config/categories.ts, config/regions.ts); `source` is a sources.key;
- * `entity` and `keyword` are free text, matched case-insensitively.
- */
-export const INTEREST_KINDS = ["category", "region", "state", "entity", "keyword", "source"] as const;
-export type InterestKind = (typeof INTEREST_KINDS)[number];
 
-/**
- *   follow  more of this
- *   mute    less of this: ranked down, never hidden entirely
- *   block   none of this: removed from every feed
- */
-export const INTEREST_STANCES = ["follow", "mute", "block"] as const;
-export type InterestStance = (typeof INTEREST_STANCES)[number];
 
-/**
- * `explicit` is something the reader chose. `inferred` is something the
- * product guessed from reading, and is always shown as a guess with a remove
- * button. Sensitive categories are never inferred (config/categories.ts).
- */
-export const INTEREST_ORIGINS = ["explicit", "inferred"] as const;
-export type InterestOrigin = (typeof INTEREST_ORIGINS)[number];
 
 export const userInterests = pgTable(
   "user_interests",
@@ -156,12 +152,6 @@ export const collectionItems = pgTable(
   (t) => [primaryKey({ columns: [t.collectionId, t.bookmarkId] }), index("collection_items_user").on(t.userId)],
 );
 
-/**
- *   more / less   "more like this", "less like this" -- a ranking signal, decaying
- *   hide          never show me this story again
- */
-export const FEEDBACK_KINDS = ["more", "less", "hide"] as const;
-export type FeedbackKind = (typeof FEEDBACK_KINDS)[number];
 
 export const userStoryFeedback = pgTable(
   "user_story_feedback",
@@ -200,10 +190,6 @@ export const readingHistory = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.storyId] }), index("reading_history_recent").on(t.userId, t.lastOpenedAt.desc())],
 );
 
-export const REPORT_REASONS = ["misleading", "misattributed", "duplicate", "wrong_category", "harmful", "rights", "other"] as const;
-export type ReportReason = (typeof REPORT_REASONS)[number];
-export const REPORT_STATUSES = ["open", "actioned", "dismissed"] as const;
-export type ReportStatus = (typeof REPORT_STATUSES)[number];
 
 /**
  * A reader's report about a story or an item. The reader may see their own

@@ -3,12 +3,14 @@
 import { useState, type FormEvent } from "react";
 
 import { CodeField } from "@/components/auth/code-field";
-import { Panel } from "@/components/settings/panel";
+import { Panel, SettingRow } from "@/components/settings/panel";
+import { useStepUp } from "@/components/settings/step-up";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { TextField } from "@/components/ui/field";
 import { toast } from "@/components/ui/toast";
+import { clearHistoryAction } from "@/lib/actions/reader";
 import { deleteAccountAction, sendStepUpCodeAction } from "@/lib/actions/security";
 import { usePreferences } from "@/lib/settings/client";
 
@@ -90,6 +92,66 @@ function DeleteAccount() {
   );
 }
 
+function ExportRow() {
+  const { confirm, dialog } = useStepUp();
+  const [busy, setBusy] = useState(false);
+
+  async function download() {
+    setBusy(true);
+    let response = await fetch("/api/me/export", { credentials: "same-origin" });
+    // The server decides whether a fresh code is needed; ask only if it says so.
+    if (response.status === 403) {
+      if (!(await confirm())) return setBusy(false);
+      response = await fetch("/api/me/export", { credentials: "same-origin" });
+    }
+    setBusy(false);
+    if (!response.ok) {
+      toast.error(response.status === 429 ? "Too many exports. Try again in an hour." : "Your data could not be exported. Please try again.");
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "my-reading-data.json";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast.success("Your data was downloaded.");
+  }
+
+  return (
+    <SettingRow label="Download my data" note="One JSON file: your account, settings, interests, saved stories and notes, collections, feedback, reading history, reports and security log. Sign-in codes and tokens are never included.">
+      <Button variant="secondary" loading={busy} onClick={() => void download()}>
+        Download
+      </Button>
+      {dialog}
+    </SettingRow>
+  );
+}
+
+function ClearHistoryRow() {
+  const [busy, setBusy] = useState(false);
+  return (
+    <SettingRow label="Clear reading history" note="Forgets every story you have opened. Saved stories are not affected.">
+      <Button
+        variant="secondary"
+        loading={busy}
+        onClick={async () => {
+          setBusy(true);
+          const result = await clearHistoryAction({});
+          setBusy(false);
+          if (!result.ok) return void toast.error(result.message);
+          toast.success(result.data.cleared === 1 ? "1 story forgotten." : `${result.data.cleared} stories forgotten.`);
+        }}
+      >
+        Clear history
+      </Button>
+    </SettingRow>
+  );
+}
+
 export function DataSettings() {
   const { preferences, update } = usePreferences();
   return (
@@ -111,6 +173,11 @@ export function DataSettings() {
             onCheckedChange={(next) => update({ personalisation: next })}
           />
         </div>
+      </Panel>
+
+      <Panel title="Your data" note="Yours to take away or wipe, at any time.">
+        <ExportRow />
+        <ClearHistoryRow />
       </Panel>
 
       <DeleteAccount />

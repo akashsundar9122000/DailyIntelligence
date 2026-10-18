@@ -1,0 +1,45 @@
+name: Tick
+
+# Reads every due source, clusters and scores, every fifteen minutes.
+#
+# GitHub may start a scheduled run 5-20 minutes late under load; the paper
+# shows real freshness times, so lateness is visible rather than hidden, and
+# Vercel's daily cron is the backstop. The endpoint does the work within its
+# own time budget; this job only knocks on the door and reports what came back.
+#
+# Needs repository secrets TICK_URL (the production origin) and CRON_SECRET.
+# Without them it fails loudly rather than appearing to run.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Call the tick endpoint
+        env:
+          TICK_URL: ${{ secrets.TICK_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          TRIGGER: ${{ github.event_name == 'workflow_dispatch' && 'manual' || 'github' }}
+        run: |
+          if [ -z "$TICK_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::TICK_URL and CRON_SECRET must be set as repository secrets."
+            exit 1
+          fi
+          status=$(curl -sS -o response.json -w '%{http_code}' --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" -H "x-trigger: $TRIGGER" "$TICK_URL/api/cron/tick")
+          # The summary names sources and counts only; no secret or content is in it.
+          cat response.json
+          echo
+          if [ "$status" != "200" ]; then
+            echo "::error::The tick answered $status."
+            exit 1
+          fi

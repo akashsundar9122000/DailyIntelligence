@@ -32,3 +32,24 @@ export function isoInstant(column: SQL): SQL<string> {
 export function showableSource(): SQL {
   return sql`(src.rights_status = 'cleared' and src.headline_display_allowed)`;
 }
+
+/**
+ * A JavaScript array as ONE Postgres array parameter.
+ *
+ * Drizzle's sql template expands an array into a parenthesised list -- `(a,
+ * b)` -- which is a row, not an array, and an EMPTY array becomes `()`, which
+ * is a syntax error that only appears for the record with no categories. This
+ * writes the array literal itself (every element quoted, quotes and
+ * backslashes escaped) and sends it as a single text parameter, cast.
+ */
+function arrayLiteral(values: readonly string[]): string {
+  return `{${values.map((value) => `"${value.replace(/["\\]/g, "\\$&")}"`).join(",")}}`;
+}
+
+export function textArray(values: readonly string[]): SQL {
+  return sql`${arrayLiteral(values)}::text[]`;
+}
+
+export function uuidArray(values: readonly string[]): SQL {
+  return sql`${arrayLiteral(values)}::uuid[]`;
+}

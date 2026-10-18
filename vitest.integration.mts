@@ -50,7 +50,7 @@ export default defineConfig({
       // one from this machine and hands the adapter its address. A suite that
       // read the live internet would pass or fail with somebody else's website.
       GDELT_DOC_API_URL: "http://127.0.0.1:9/unset-in-tests",
-      GDELT_LASTUPDATE_URL: "http://127.0.0.1:9/unset-in-tests",
+      GDELT_LASTUPDATE_URL: "https://fixtures.invalid/gdeltv2/lastupdate.txt",
       YOUTUBE_API_KEY: "",
       DEMO_MODE: "",
 

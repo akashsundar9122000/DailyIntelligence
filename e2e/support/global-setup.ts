@@ -4,6 +4,7 @@ import pg from "pg";
 import { applyRoles, migrate } from "../../scripts/db/steps.mts";
 import { assertTestDatabase } from "../../tests/test-database";
 import { startModelStub } from "./model-stub";
+import { seedEdition } from "./seed";
 
 /*
  * The suite's server runs against the local test database. Prepare it here, with
@@ -34,6 +35,8 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   } finally {
     await client.end();
   }
+  // A small invented edition, so the journeys have stories to read (e2e/support/seed.ts).
+  await seedEdition(ownerUrl);
   // Returned so that Playwright stops the stand-in model when the run ends.
   return startModelStub();
 }

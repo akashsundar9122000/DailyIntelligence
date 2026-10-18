@@ -17,11 +17,12 @@ test.describe("the signed-in shell, on a wide screen", () => {
     await expect(page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Hot Now" })).toHaveAttribute("aria-current", "page");
   });
 
-  test("shows the dateline and says plainly that no source has reported yet", async ({ page }) => {
+  test("shows the dateline and when a source last really answered", async ({ page }) => {
     await page.goto("/app");
     const strip = page.getByRole("region", { name: "Edition" });
     await expect(strip).toContainText(/\d{4}/);
-    await expect(strip).toContainText("No source has reported yet");
+    await expect(strip).toContainText(/Updated \d{1,2}:\d{2} [ap]m IST/);
+    await expect(strip).toContainText("2 of 2 sources reporting");
   });
 
   test("remembers the edition across a reload, on the server", async ({ page }) => {
@@ -53,14 +54,18 @@ test.describe("the signed-in shell, on a wide screen", () => {
 
   test("opens the command palette with the keyboard and goes where it is told", async ({ page }) => {
     await page.goto("/app");
-    await page.keyboard.press("ControlOrMeta+k");
-    await page.getByRole("combobox").fill("saved");
+    // The shortcut is listened for once the page is interactive; a press during hydration is lost, so press again as a person would.
+    await expect(async () => {
+      await page.keyboard.press("ControlOrMeta+k");
+      await expect(page.getByRole("combobox", { name: "Search pages" })).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
+    await page.getByRole("combobox", { name: "Search pages" }).fill("saved");
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/app\/saved$/);
   });
 
   test("every section still in preparation says so, and shows no stories", async ({ page }) => {
-    await page.goto("/app/hot");
+    await page.goto("/app/briefings");
     await expect(page.getByText("In preparation")).toBeVisible();
     await expect(page.getByText("Nothing here is sample news.")).toBeVisible();
   });

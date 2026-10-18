@@ -1,16 +1,42 @@
 import AxeBuilder from "@axe-core/playwright";
 
+import { SEED_STORIES } from "../support/seed";
 import { expect, test } from "../support/session";
 
 test.use({ reducedMotion: "reduce" });
 
-const ROUTES = ["/app", "/app/hot", "/app/settings/account", "/app/settings/appearance", "/app/settings/security", "/app/settings/data"];
+const ROUTES = [
+  "/app",
+  "/app/today",
+  "/app/hot",
+  "/app/india",
+  "/app/global",
+  "/app/categories",
+  "/app/categories/climate",
+  "/app/search?q=monsoon",
+  "/app/saved",
+  "/app/onboarding",
+  "/app/settings/account",
+  "/app/settings/interests",
+  "/app/settings/reading",
+  "/app/settings/appearance",
+  "/app/settings/security",
+  "/app/settings/data",
+  // A story's id is made by the seed, so the story page is reached the way a reader reaches it.
+  "story",
+];
 
 for (const route of ROUTES) {
   for (const theme of ["light", "dark"] as const) {
     test(`${route} has no serious accessibility violations in the ${theme} theme`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: theme });
-      await page.goto(route, { waitUntil: "load" });
+      if (route === "story") {
+        await page.goto("/app/categories/climate");
+        await page.getByRole("link", { name: SEED_STORIES.find((story) => story.key === "monsoon")!.headline }).first().click();
+        await expect(page).toHaveURL(/\/app\/story\//);
+      } else {
+        await page.goto(route, { waitUntil: "load" });
+      }
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       await page.evaluate(() => document.fonts.ready);
       const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

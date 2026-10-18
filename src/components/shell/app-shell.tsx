@@ -76,9 +76,17 @@ function initials(name: string): string {
     .join("");
 }
 
+/** Pages that are not destinations in the rail, and the name the breadcrumb gives them. */
+const OFF_NAV: { prefix: string; label: string }[] = [
+  { prefix: "/app/story/", label: "Story" },
+  { prefix: "/app/onboarding", label: "Set up your edition" },
+  { prefix: "/app/admin", label: "Administration" },
+];
+
 function Breadcrumbs() {
   const pathname = usePathname();
-  const item = navItemFor(pathname);
+  const offNav = OFF_NAV.find((entry) => pathname.startsWith(entry.prefix));
+  const item = offNav ? { href: pathname, label: offNav.label } : navItemFor(pathname);
   const nested = Boolean(item && item.href !== "/app");
   return (
     <nav aria-label="Breadcrumb" className="min-w-0">
