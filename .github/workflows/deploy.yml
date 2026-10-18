@@ -1,0 +1,52 @@
+name: Deploy
+
+# Production deploys only ever follow a green CI run on main: this workflow is
+# triggered by CI finishing, and does nothing unless it succeeded. After the
+# deploy, the read-only smoke suite runs against the live URL and checks that
+# the commit it reports is the one that was pushed. A failed smoke test fails
+# this workflow.
+#
+# Off until the repository is configured for it (variable DEPLOY_ENABLED=true,
+# secrets VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID). Until then a deploy is
+# made by hand with the same steps: see the README.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The commit CI verified, not whatever main is by now.
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm dlx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - run: pnpm dlx vercel@latest build --prod --token="$VERCEL_TOKEN"
+      - id: deploy
+        run: echo "url=$(pnpm dlx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN")" >> "$GITHUB_OUTPUT"
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Production smoke tests
+        env:
+          SMOKE_BASE_URL: ${{ vars.PRODUCTION_URL }}
+          SMOKE_EXPECTED_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: pnpm test:smoke

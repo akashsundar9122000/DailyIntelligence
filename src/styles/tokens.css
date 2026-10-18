@@ -1,0 +1,708 @@
+/*
+ * Design tokens. The look is a NEWSPAPER: newsprint paper, ink-black type,
+ * hairline and double rules, and one spot colour.
+ *
+ * TWO LAYERS, and the split is not cosmetic:
+ *
+ *   Layer 1 -- `@theme inline` declares token NAMES so Tailwind generates
+ *   utilities. `inline` is mandatory: it makes `bg-accent` compile to
+ *   `background-color: var(--color-accent)` rather than to whatever hex :root
+ *   held at build time. That indirection is what lets [data-theme] and
+ *   [data-surface] change what an already-compiled class MEANS, at runtime,
+ *   per subtree. Remove it and theming stops working with no build error.
+ *
+ *   Layer 2 -- `:root` and its scoped overrides hold the VALUES. `@theme`
+ *   cannot be nested in a selector or a media query, which is why there are
+ *   two layers rather than one.
+ *
+ * Tailwind v4 reads colours from --color-* inside @theme. A token mapped under
+ * any other prefix silently resolves to nothing -- which in an SVG `fill`
+ * falls back to BLACK, and reads as a theming bug rather than a typo.
+ *
+ * PRESS RED IS THE ONLY COLOUR, the way a newspaper prints one spot colour. It
+ * means "breaking", "live" or "something is wrong", and nothing else: a red
+ * link or a red decoration would teach the reader to ignore it. Everything
+ * else -- buttons, links, focus, success -- is ink, told apart by weight, rule
+ * and icon rather than by hue. Three tokens, because one red cannot do all
+ * three jobs:
+ *   press          text. Held to 4.5:1 on every ground it lands on.
+ *   press-solid    a filled label or the logo's signal dot. 3:1, white on it 4.5:1.
+ *   press-subtle   the tint behind a red label.
+ *
+ * The one exception is `warning`, a muted ochre kept for the "stale source" and
+ * "limited coverage" notes. It never appears on a story card, and never
+ * without its icon and its words.
+ */
+
+@import "tailwindcss";
+
+/* Touch-vs-cursor, as a variant rather than a media query, so a call site can
+   read `coarse:h-11` -- "44px on touch, unchanged otherwise". */
+@custom-variant coarse (@media (pointer: coarse));
+
+@theme inline {
+  /* Nuke Tailwind's 300-colour default palette so a stray `bg-red-500` cannot
+     physically exist in this codebase. */
+  --color-*: initial;
+  --radius-*: initial;
+  --ease-*: initial;
+
+  /* Three faces with three jobs: a high-contrast display serif for the
+     masthead and headlines, a text serif built for long reading, and a plain
+     sans for the interface around them. */
+  --font-sans: var(--font-ui), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-serif), "Times New Roman", ui-serif, serif;
+  --font-serif: var(--font-text-serif), Georgia, ui-serif, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Surfaces */
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-hover: var(--surface-hover);
+
+  /* Rules. Three, because they have three different jobs and three different
+     contrast requirements. */
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-border-input: var(--border-input);
+
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+
+  /* Accent is ink. Kept as its own name so a component asks for "the
+     primary action", not for a particular colour. */
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-border: var(--accent-border);
+  --color-on-accent: var(--on-accent);
+
+  /* The inverted pair */
+  --color-ink: var(--ink);
+  --color-on-ink: var(--on-ink);
+
+  /* The spot colour */
+  --color-press: var(--press);
+  --color-press-solid: var(--press-solid);
+  --color-press-subtle: var(--press-subtle);
+  --color-on-press: var(--on-press);
+
+  /* Status */
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-on-danger: var(--on-danger);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+
+  /* Chart series: ink steps plus the spot colour. A chart may never tell two
+     series apart by shade alone -- every series also carries a dash pattern
+     or a direct label (see components/charts). */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-track: var(--chart-track);
+
+  /* Newsprint is square-cornered. Small radii survive for controls a finger
+     has to find; cards are ruled, not rounded. */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Paper does not float. One faint shadow, for things that genuinely sit
+     above the page: a menu, a dialog, a toast. */
+  --shadow-sm: 0 1px 0 var(--border);
+  --shadow-md: 0 1px 2px rgb(18 17 16 / 0.06), 0 6px 18px rgb(18 17 16 / 0.08);
+  --shadow-lg: 0 2px 6px rgb(18 17 16 / 0.08), 0 18px 44px rgb(18 17 16 / 0.14);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ------------------------------------------------------------------ values */
+/*
+ * FOUR THEME BLOCKS AND ONE SURFACE SCOPE. Every one declares the FULL set.
+ *
+ *   :root                                 light -- the morning edition
+ *   @media (prefers-color-scheme: dark)   the OS preference, before the
+ *                                         pre-paint script has run
+ *   :root[data-theme="dark"]              an explicit choice, which must win
+ *   :root[data-theme="contrast"]          high contrast, on white
+ *   [data-surface="night"]                an always-dark band in a light page
+ *
+ * A block that left a token out would inherit it from whichever block matched
+ * underneath, and on a dark OS that is the media-query block: the high
+ * contrast theme would paint light-theme text on dark-theme tints.
+ *
+ * The dark values are therefore written three times. The cost is drift, so
+ * scripts/check-contrast.ts asserts the three copies are identical.
+ *
+ * The night edition is not pure white on pure black: that pair vibrates and
+ * tires the eye on a long read. It is warm off-white on a warm near-black.
+ */
+
+:root {
+  color-scheme: light;
+
+  --canvas: #f3f0e8;
+  --surface: #faf8f3;
+  --surface-raised: #fdfcf9;
+  --surface-sunken: #e9e5db;
+  --surface-hover: #eeeae1;
+
+  --border: #ddd7ca;
+  /* A rule must be VISIBLE, not loud -- held to ~1.4:1, not 3:1. */
+  --border-strong: #c3bcab;
+  /* WCAG 1.4.11: the boundary that identifies an input needs 3:1. */
+  --border-input: #77715f;
+
+  --text-primary: #141311;
+  --text-secondary: #3d3a34;
+  --text-tertiary: #5c574d;
+
+  --accent: #141311;
+  --accent-hover: #34312b;
+  --accent-subtle: #e6e1d5;
+  --accent-border: #b3ac9b;
+  --on-accent: #faf8f3;
+
+  --ink: #141311;
+  --on-ink: #f3f0e8;
+
+  --press: #b0101c;
+  --press-solid: #c8102e;
+  --press-subtle: #f5e1dc;
+  --on-press: #ffffff;
+
+  --success: #2b2925;
+  --success-subtle: #e6e1d5;
+  --warning: #6e5313;
+  --warning-subtle: #f1e8cf;
+  --danger: #b0101c;
+  --danger-subtle: #f5e1dc;
+  --on-danger: #ffffff;
+  --info: #2b2925;
+  --info-subtle: #e6e1d5;
+
+  --chart-1: #141311;
+  --chart-2: #4f4b43;
+  --chart-3: #827c70;
+  --chart-4: #c8102e;
+  --chart-5: #2f2c27;
+  --chart-6: #69645a;
+  --chart-grid: #e2ddd1;
+  --chart-track: #e9e5db;
+
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 420ms;
+
+  /* Indirection, not decoration: env() is resolved by the browser from real
+     hardware and is always 0 in a headless run, so an inset layout cannot be
+     asserted against at all unless every inset goes through these. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* Inner padding of cards and table rows. Tightened by [data-density="compact"]. */
+  --pad-card: 1.25rem;
+  --pad-row: 0.75rem;
+
+  --header-h: 3.75rem;
+  --rail-w: 15rem;
+  --bottom-nav-h: 0px;
+  --container: 80rem;
+  /* The reading measure: about 68 characters of the text serif. */
+  --measure: 40rem;
+
+  /* Tailwind v4 has no --z-index-* namespace, so these stay raw vars. */
+  --z-raised: 10;
+  --z-sticky: 20;
+  --z-nav: 30;
+  --z-header: 40;
+  --z-popover: 50;
+  --z-overlay: 60;
+}
+
+@media (max-width: 1023px) {
+  :root { --bottom-nav-h: calc(3.75rem + var(--safe-bottom)); }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="contrast"]) {
+    color-scheme: dark;
+
+    --canvas: #121110;
+    --surface: #1a1917;
+    --surface-raised: #211f1d;
+    --surface-sunken: #0c0b0a;
+    --surface-hover: #252321;
+
+    --border: #2f2d2a;
+    --border-strong: #46433e;
+    --border-input: #8d887e;
+
+    --text-primary: #ede8dd;
+    --text-secondary: #c9c2b5;
+    --text-tertiary: #a59e91;
+
+    --accent: #ede8dd;
+    --accent-hover: #fffaf0;
+    --accent-subtle: #2a2825;
+    --accent-border: #58544c;
+    --on-accent: #121110;
+
+    --ink: #ede8dd;
+    --on-ink: #121110;
+
+    --press: #f2706a;
+    --press-solid: #d42a33;
+    --press-subtle: #3a1918;
+    --on-press: #ffffff;
+
+    --success: #d6d0c4;
+    --success-subtle: #24231f;
+    --warning: #e3c98f;
+    --warning-subtle: #2c2618;
+    --danger: #f2706a;
+    --danger-subtle: #3a1918;
+    --on-danger: #121110;
+    --info: #d6d0c4;
+    --info-subtle: #24231f;
+
+    --chart-1: #ede8dd;
+    --chart-2: #b3ac9f;
+    --chart-3: #858075;
+    --chart-4: #d42a33;
+    --chart-5: #d6d0c4;
+    --chart-6: #9a9488;
+    --chart-grid: #2a2825;
+    --chart-track: #24231f;
+  }
+}
+
+/* The same values again, so an explicit choice wins over a light OS. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: #121110;
+  --surface: #1a1917;
+  --surface-raised: #211f1d;
+  --surface-sunken: #0c0b0a;
+  --surface-hover: #252321;
+
+  --border: #2f2d2a;
+  --border-strong: #46433e;
+  --border-input: #8d887e;
+
+  --text-primary: #ede8dd;
+  --text-secondary: #c9c2b5;
+  --text-tertiary: #a59e91;
+
+  --accent: #ede8dd;
+  --accent-hover: #fffaf0;
+  --accent-subtle: #2a2825;
+  --accent-border: #58544c;
+  --on-accent: #121110;
+
+  --ink: #ede8dd;
+  --on-ink: #121110;
+
+  --press: #f2706a;
+  --press-solid: #d42a33;
+  --press-subtle: #3a1918;
+  --on-press: #ffffff;
+
+  --success: #d6d0c4;
+  --success-subtle: #24231f;
+  --warning: #e3c98f;
+  --warning-subtle: #2c2618;
+  --danger: #f2706a;
+  --danger-subtle: #3a1918;
+  --on-danger: #121110;
+  --info: #d6d0c4;
+  --info-subtle: #24231f;
+
+  --chart-1: #ede8dd;
+  --chart-2: #b3ac9f;
+  --chart-3: #858075;
+  --chart-4: #d42a33;
+  --chart-5: #d6d0c4;
+  --chart-6: #9a9488;
+  --chart-grid: #2a2825;
+  --chart-track: #24231f;
+}
+
+/*
+ * High contrast, on white. Text pairs are held to 7:1 here rather than 4.5:1,
+ * and rules are dark enough to identify a control on their own.
+ */
+:root[data-theme="contrast"] {
+  color-scheme: light;
+
+  --canvas: #ffffff;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f0f0f0;
+  --surface-hover: #ebebeb;
+
+  --border: #6b6b6b;
+  --border-strong: #3d3d3d;
+  --border-input: #000000;
+
+  --text-primary: #000000;
+  --text-secondary: #1a1a1a;
+  --text-tertiary: #2e2e2e;
+
+  --accent: #000000;
+  --accent-hover: #262626;
+  --accent-subtle: #e6e6e6;
+  --accent-border: #000000;
+  --on-accent: #ffffff;
+
+  --ink: #000000;
+  --on-ink: #ffffff;
+
+  --press: #8f0a14;
+  --press-solid: #a30d1a;
+  --press-subtle: #fbe4e4;
+  --on-press: #ffffff;
+
+  --success: #000000;
+  --success-subtle: #e6e6e6;
+  --warning: #4d3800;
+  --warning-subtle: #f6edd2;
+  --danger: #8f0a14;
+  --danger-subtle: #fbe4e4;
+  --on-danger: #ffffff;
+  --info: #000000;
+  --info-subtle: #e6e6e6;
+
+  --chart-1: #000000;
+  --chart-2: #3d3d3d;
+  --chart-3: #6b6b6b;
+  --chart-4: #a30d1a;
+  --chart-5: #1f1f1f;
+  --chart-6: #575757;
+  --chart-grid: #cccccc;
+  --chart-track: #f0f0f0;
+}
+
+/*
+ * DENSITY and TEXT SIZE. Two attributes on <html>, set from the reader's
+ * preferences before first paint. Text size scales the root font size as a
+ * percentage, so it multiplies whatever default the reader's browser is set
+ * to rather than replacing it.
+ */
+:root[data-density="compact"] {
+  --pad-card: 0.875rem;
+  --pad-row: 0.5rem;
+}
+:root[data-text-size="90"] { font-size: 90%; }
+:root[data-text-size="112"] { font-size: 112%; }
+:root[data-text-size="125"] { font-size: 125%; }
+
+/*
+ * A SURFACE SCOPE: an always-dark band inside a light page (the landing
+ * page's "hot is not true" spread, the login brand panel). It re-declares
+ * EVERYTHING -- status, charts, rules -- not just surfaces. Inheriting those
+ * from :root would paint the light theme's ink on a near-black ground.
+ */
+[data-surface="night"] {
+  color-scheme: dark;
+
+  --canvas: #121110;
+  --surface: #1a1917;
+  --surface-raised: #211f1d;
+  --surface-sunken: #0c0b0a;
+  --surface-hover: #252321;
+
+  --border: #2f2d2a;
+  --border-strong: #46433e;
+  --border-input: #8d887e;
+
+  --text-primary: #ede8dd;
+  --text-secondary: #c9c2b5;
+  --text-tertiary: #a59e91;
+
+  --accent: #ede8dd;
+  --accent-hover: #fffaf0;
+  --accent-subtle: #2a2825;
+  --accent-border: #58544c;
+  --on-accent: #121110;
+
+  --ink: #ede8dd;
+  --on-ink: #121110;
+
+  --press: #f2706a;
+  --press-solid: #d42a33;
+  --press-subtle: #3a1918;
+  --on-press: #ffffff;
+
+  --success: #d6d0c4;
+  --success-subtle: #24231f;
+  --warning: #e3c98f;
+  --warning-subtle: #2c2618;
+  --danger: #f2706a;
+  --danger-subtle: #3a1918;
+  --on-danger: #121110;
+  --info: #d6d0c4;
+  --info-subtle: #24231f;
+
+  --chart-1: #ede8dd;
+  --chart-2: #b3ac9f;
+  --chart-3: #858075;
+  --chart-4: #d42a33;
+  --chart-5: #d6d0c4;
+  --chart-6: #9a9488;
+  --chart-grid: #2a2825;
+  --chart-track: #24231f;
+
+  /*
+   * The RAW variables, not --color-*. Tailwind defines --color-canvas once, on
+   * :root, where var(--canvas) is resolved to the page's theme; this element
+   * would inherit that already-resolved value and paint a light background
+   * under the dark text set above. Only the raw variables are re-declared in
+   * this scope, so only they mean "dark" here.
+   */
+  background: var(--canvas);
+  color: var(--text-primary);
+}
+
+@layer base {
+  /* A visible focus ring everywhere by default. Removing it is a deliberate,
+     local decision; having to remember to ADD it is how it ends up missing on
+     the one control that needed it most. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  body {
+    background: var(--canvas);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    /* A user-supplied string otherwise produces a horizontal scrollbar with no
+       oversized element to blame. */
+    overflow-wrap: break-word;
+  }
+
+  /* Headlines are set in the display serif and balanced; the interface
+     chrome around them stays in the sans. */
+  h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.012em; text-wrap: balance; }
+  p { text-wrap: pretty; }
+  /* Datelines, counts and times line up in columns, as in a printed table. */
+  time, [data-numeric] { font-variant-numeric: tabular-nums; }
+
+}
+
+/*
+ * NEWSPRINT. The rules and type treatments every page is built from. They are
+ * components rather than one-off classes because a masthead rule drawn three
+ * different ways on three pages stops reading as one paper.
+ */
+@layer components {
+  /* The masthead's double rule: a thick line over a hairline. */
+  .rule-double {
+    border-top: 3px solid var(--text-primary);
+    box-shadow: inset 0 4px 0 var(--canvas), inset 0 5px 0 var(--text-primary);
+    height: 6px;
+  }
+  .rule-thick { border-top: 2px solid var(--text-primary); }
+  .rule-hair { border-top: 1px solid var(--border-strong); }
+
+  /* A kicker: the small capitals above a headline that say what it is. */
+  .kicker {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* The dek: the line under a headline that says why to read it. */
+  .dek {
+    font-family: var(--font-serif);
+    font-style: italic;
+    color: var(--text-secondary);
+  }
+
+  /* Reading text: the text serif at a comfortable measure and leading. */
+  .prose-news {
+    font-family: var(--font-serif);
+    font-size: 1.125rem;
+    line-height: 1.7;
+    max-width: var(--measure);
+  }
+  .prose-news > * + * { margin-top: 1em; }
+
+  /* A drop cap for the first paragraph of a long read. Decoration only:
+     ::first-letter is read aloud as part of the word, so nothing is lost. */
+  .drop-cap::first-letter {
+    float: left;
+    font-family: var(--font-display);
+    font-size: 3.6em;
+    line-height: 0.82;
+    font-weight: 700;
+    padding: 0.06em 0.08em 0 0;
+  }
+
+  /* Column rules between grid cells, as on a printed page. Applied to the
+     grid; a cell never draws its own neighbour's rule. */
+  .columns-ruled > * + * { border-left: 1px solid var(--border); }
+  @media (max-width: 767px) {
+    .columns-ruled > * + * { border-left: 0; border-top: 1px solid var(--border); }
+  }
+}
+
+/*
+ * The 16px input floor, declared OUTSIDE @layer on purpose so it beats
+ * `text-sm` without !important. max(), because 16px is a floor and not a size:
+ * below it, iOS Safari zooms the viewport on focus and does not zoom back.
+ *
+ * Never "fix" that with maximum-scale or user-scalable=no. Locking zoom takes
+ * pinch-zoom away from anyone who needs it to read the screen; the real cause
+ * is a font-size under 16px.
+ */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  font-size: max(1rem, 16px);
+}
+
+/*
+ * Entrance motion, inside a no-preference query rather than undone by the
+ * reduced-motion switch below. That switch collapses durations; it does not
+ * undo a starting state, so an element animated from opacity 0 with a delay
+ * would sit invisible for the length of the delay.
+ *
+ * Everything here runs ONCE. Nothing loops: a chart that keeps moving on a page
+ * about market data reads as a live feed.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .line-draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: line-draw 1400ms var(--ease-in-out) 500ms forwards;
+  }
+  .rise-in {
+    animation: rise-in 640ms var(--ease-out) both;
+  }
+  /* Hidden only once a script has confirmed it will reveal it. With scripting
+     off, or before hydration, the content is simply there. */
+  .js-reveal [data-reveal]:not([data-revealed]) {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  [data-reveal] {
+    transition:
+      opacity 560ms var(--ease-out),
+      transform 560ms var(--ease-out);
+  }
+}
+
+/*
+ * The sources ticker: two copies of one line, moved left by one copy's width,
+ * forever. Slow on purpose -- a ticker you can read, not a marquee you chase.
+ * Only with motion allowed by both the OS and the reader's own setting; still,
+ * it is a line that wraps.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion="reduce"]) .ticker {
+    animation: ticker 60s linear infinite;
+  }
+  :root:not([data-motion="reduce"]) .ticker:hover {
+    animation-play-state: paused;
+  }
+}
+@keyframes ticker {
+  to { transform: translateX(-50%); }
+}
+
+@keyframes line-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(0.75rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * 1ms, not 0. `transitionend` never fires at 0s in some engines, and code
+   * that waits for it would hang forever.
+   *
+   * Note this collapses DURATION but not animation-delay, -name or
+   * -fill-mode -- so entrance styles must live inside a
+   * `(prefers-reduced-motion: no-preference)` query rather than relying on
+   * this switch to undo them.
+   */
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * The in-app motion switch (Settings, Appearance). The OS query above covers
+ * readers who set it system-wide; this covers readers who want it calm here
+ * only. Entrance states are undone explicitly, not just shortened: a reveal
+ * that starts at opacity 0 would otherwise wait out its delay invisible.
+ */
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 1ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}
+:root[data-motion="reduce"] .js-reveal [data-reveal]:not([data-revealed]) {
+  opacity: 1;
+  transform: none;
+}
+
+/* With motion off, the ticker is a still line that wraps, and its loop copy is gone. */
+@media (prefers-reduced-motion: reduce) {
+  .ticker { width: auto; white-space: normal; padding-inline: 1rem; }
+  .ticker > [aria-hidden] { display: none; }
+}
+:root[data-motion="reduce"] .ticker { width: auto; white-space: normal; padding-inline: 1rem; }
+:root[data-motion="reduce"] .ticker > [aria-hidden] { display: none; }
+
+/*
+ * In the night edition the page is already dark, so a night band would vanish
+ * into it. There the band sinks one step deeper and is ruled off, which keeps
+ * it reading as a separate spread rather than as more of the page.
+ */
+:root[data-theme="dark"] [data-surface="night"] {
+  background: var(--surface-sunken);
+  border-block: 1px solid var(--border-strong);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="contrast"]) [data-surface="night"] {
+    background: var(--surface-sunken);
+    border-block: 1px solid var(--border-strong);
+  }
+}

@@ -1,0 +1,21 @@
+# Packages permitted to run install scripts. A postinstall script runs arbitrary
+# code from a dependency, so this is a short, deliberate allowlist rather than a
+# blanket approval — each entry needs a reason.
+
+allowBuilds:
+  # Downloads/links its platform-native binary. Required by vitest and tsx.
+  esbuild: true
+
+  # Ship prebuilt binaries for darwin-arm64 and linux-x64, which is every
+  # platform this project builds on (local, CI and Vercel). Their build scripts
+  # only matter when compiling from source, so denying them costs nothing.
+  sharp: false
+  unrs-resolver: false
+
+# One Playwright in the tree, at the version whose browsers are installed.
+# @axe-core/playwright otherwise resolves its own newer playwright-core, and the
+# two `Page` types stop being assignable to each other: the typecheck fails on a
+# line that has nothing wrong with it.
+overrides:
+  playwright: 1.63.0
+  playwright-core: 1.63.0
