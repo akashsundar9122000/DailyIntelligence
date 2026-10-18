@@ -1,4 +1,6 @@
-import { SOURCE_CATALOGUE, EXCLUDED_PUBLISHER_DOMAINS, type SourceDefinition } from "./catalogue";
+import { brand } from "@/config/brand";
+
+import { EXCLUDED_PUBLISHER_DOMAINS, SOURCE_CATALOGUE, type SourceDefinition } from "./catalogue";
 
 const yes = (value: boolean) => (value ? "yes" : "no");
 
@@ -36,7 +38,7 @@ export function renderSourceRights(): string {
     "",
     "<!-- Generated from src/lib/sources/catalogue.ts by `pnpm docs:sources`. Do not edit by hand. -->",
     "",
-    "Every source Daily Intelligence has considered, what its terms say, and what we do as a result. A source is fetched only when it is **cleared**; anything unclear is **pending review** and never fetched; anything whose terms say no is **excluded**, listed publicly at `/sources` with the reason. Engineering diligence, not legal advice.",
+    `Every source ${brand.name} has considered, what its terms say, and what we do as a result. A source is fetched only when it is **cleared**; anything unclear is **pending review** and never fetched; anything whose terms say no is **excluded**, listed publicly at \`/sources\` with the reason. Engineering diligence, not legal advice.`,
     "",
     "Publishers whose items are dropped from the GDELT index before storage: " + EXCLUDED_PUBLISHER_DOMAINS.map((domain) => `\`${domain}\``).join(", ") + ".",
     "",
