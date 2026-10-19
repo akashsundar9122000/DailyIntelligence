@@ -15,6 +15,25 @@ test.describe("with reduced motion", () => {
     expect(await orbs.evaluateAll((elements) => elements.map((element) => getComputedStyle(element).animationName))).toEqual(["none", "none", "none"]);
   });
 
+  test("the headline, the scroll story and the dials are drawn finished, not mid-entrance", async ({ page }) => {
+    await page.goto("/", { waitUntil: "load" });
+    const still = (selector: string) =>
+      page.locator(selector).evaluateAll((elements) => elements.map((element) => [getComputedStyle(element).animationName, getComputedStyle(element).opacity]));
+    for (const [name, opacity] of await still(".hero-word")) {
+      expect(name).toBe("none");
+      expect(opacity).toBe("1");
+    }
+    for (const selector of [".dial-arc", ".scene-gather > *", ".scene-meter", ".scene-line", ".scene-pin"]) {
+      for (const [name] of await still(selector)) expect(name, selector).toBe("none");
+    }
+  });
+
+  test("trying a theme still works, without a transition", async ({ page }) => {
+    await page.goto("/", { waitUntil: "load" });
+    await page.getByRole("group", { name: "Theme" }).getByText("Studio", { exact: true }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-palette", "studio");
+  });
+
   test("the sources ticker stands still and wraps", async ({ page }) => {
     await page.goto("/", { waitUntil: "load" });
     const ticker = page.locator(".ticker");

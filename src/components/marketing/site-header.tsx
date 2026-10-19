@@ -51,8 +51,9 @@ export function SiteHeader() {
 
   return (
     <header
+      style={{ viewTransitionName: "site-header" }}
       className={cn(
-        "sticky top-0 z-[var(--z-header)] border-b bg-canvas/95 pt-[var(--safe-top)] backdrop-blur supports-[backdrop-filter]:bg-canvas/85",
+        "vt-frame sticky top-0 z-[var(--z-header)] border-b bg-canvas/95 pt-[var(--safe-top)] backdrop-blur supports-[backdrop-filter]:bg-canvas/85",
         scrolled ? "border-border-strong" : "border-transparent",
       )}
     >

@@ -30,6 +30,14 @@ export const PALETTE_COPY: Record<Palette, { name: string; summary: string }> = 
   },
 };
 
+/**
+ * The theme a visitor chose on the landing page, kept for the onboarding
+ * wizard to OFFER after sign-up. Separate from the live "app-palette" key: once
+ * signed in, the account's saved look replaces that one on the first page, and
+ * the visitor's choice would be gone before anyone asked them.
+ */
+export const LANDING_PALETTE_KEY = "di-landing-palette";
+
 /** "Edition" means India / World / Both; this is the day/night control, and is never called an edition. */
 export const MODE_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "system", label: "Match device" },

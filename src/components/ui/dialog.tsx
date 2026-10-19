@@ -47,13 +47,13 @@ export function Dialog({
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-[var(--z-overlay)] bg-ink/40" />
+        <RadixDialog.Overlay className="dialog-overlay fixed inset-0 z-[var(--z-overlay)] bg-ink/40 backdrop-blur-[2px]" />
         <RadixDialog.Content
           {...returnFocus}
           // With no description Radix warns unless told there is none.
           {...(description ? {} : { "aria-describedby": undefined })}
           className={cn(
-            "fixed z-[var(--z-overlay)] flex flex-col border border-border bg-surface-raised shadow-lg",
+            "dialog-panel fixed z-[var(--z-overlay)] flex flex-col border border-border bg-surface-raised shadow-lg",
             "pb-[var(--safe-bottom)] focus-visible:outline-none",
             shape,
           )}

@@ -12,12 +12,14 @@ type Size = "sm" | "md" | "lg" | "icon";
  * strings are readable at a glance, and it is one less dependency to keep
  * aligned with Tailwind's class ordering.
  *
- * The primary action is ink, not a colour: on newsprint the only colour is the
- * spot red, and that means "breaking" or "something is wrong". `danger` is for
- * destructive actions and uses its own on-colour.
+ * The primary action is the palette's accent: ink on newsprint, violet in
+ * Aurora, amber in Terminal. Never the alert colour, which means "breaking" or
+ * "something is wrong". `danger` is for destructive actions and uses its own
+ * on-colour.
  */
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-on-accent hover:bg-accent-hover",
+  // `sheen`: a sweep of light crosses it when pointed at (motion.css); flat on newsprint.
+  primary: "sheen bg-accent text-on-accent hover:bg-accent-hover",
   secondary: "bg-surface text-text-primary border border-border-strong hover:bg-surface-hover",
   ghost: "text-text-secondary hover:bg-surface-hover",
   ink: "bg-ink text-on-ink hover:opacity-90",

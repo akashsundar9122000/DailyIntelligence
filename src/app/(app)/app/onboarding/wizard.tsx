@@ -9,9 +9,12 @@ import { cn } from "@/components/ui/cn";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
 import { CATEGORIES } from "@/config/categories";
+import { LANDING_PALETTE_KEY, PALETTE_COPY } from "@/config/themes";
 import { INDIAN_STATES, SCOPE_LABELS, WORLD_REGIONS } from "@/config/regions";
 import { onboardingStepAction, removeInterestAction, saveNotificationPrefsAction, setCategoryFollowsAction, setInterestAction } from "@/lib/actions/reader";
 import { savePreferencesAction } from "@/lib/actions/preferences";
+import { isPalette } from "@/lib/design/palettes";
+import { usePreferences } from "@/lib/settings/client";
 import type { InterestKind } from "@/lib/reader-vocab";
 import type { NotificationPrefs } from "@/lib/services/reader";
 import type { Preferences } from "@/lib/settings/preferences";
@@ -122,6 +125,31 @@ export function OnboardingWizard({ initial }: { initial: WizardInitial }) {
       return null;
     }
   })();
+
+  // The theme tried on the landing page, offered the same way: once, and only if it is not already the account's.
+  const { preferences: saved, update: updatePreferences } = usePreferences();
+  const triedRaw = useSyncExternalStore(
+    () => () => undefined,
+    () => {
+      try {
+        return localStorage.getItem(LANDING_PALETTE_KEY);
+      } catch {
+        return null;
+      }
+    },
+    () => null,
+  );
+  const [themeOffered, setThemeOffered] = useState(true);
+  const tried = themeOffered && isPalette(triedRaw) && triedRaw !== saved.palette ? triedRaw : null;
+  function settleTheme(keep: boolean) {
+    if (keep && tried) updatePreferences({ palette: tried });
+    try {
+      localStorage.removeItem(LANDING_PALETTE_KEY);
+    } catch {
+      // Nothing to forget in a browser that kept nothing.
+    }
+    setThemeOffered(false);
+  }
 
   useEffect(() => {
     document.querySelector<HTMLElement>("main h1")?.focus();
@@ -396,6 +424,17 @@ export function OnboardingWizard({ initial }: { initial: WizardInitial }) {
             ))}
           </div>
           <p className="text-sm text-text-secondary">The paper is in English. Tamil and Hindi editions are planned; machine translation, when it comes, will always be labelled.</p>
+          {tried ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface px-4 py-3 text-sm">
+              <span className="text-text-secondary">You tried the {PALETTE_COPY[tried].name} theme before signing up.</span>
+              <Button variant="secondary" size="sm" onClick={() => settleTheme(true)}>
+                Keep {PALETTE_COPY[tried].name}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => settleTheme(false)}>
+                No thanks
+              </Button>
+            </div>
+          ) : null}
           <div className="flex justify-between border-t border-border pt-5">
             {back}
             <Button size="lg" loading={pending} onClick={() => go(5, () => savePreferencesAction({ readingStyle }))}>

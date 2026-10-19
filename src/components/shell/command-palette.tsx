@@ -65,11 +65,11 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   return (
     <RadixDialog.Root open={open} onOpenChange={close}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-[var(--z-overlay)] bg-ink/40" />
+        <RadixDialog.Overlay className="dialog-overlay fixed inset-0 z-[var(--z-overlay)] bg-ink/40 backdrop-blur-[2px]" />
         <RadixDialog.Content
           {...returnFocus}
           aria-describedby={undefined}
-          className="fixed inset-x-3 top-[10dvh] z-[var(--z-overlay)] mx-auto flex max-h-[70dvh] max-w-xl flex-col overflow-hidden rounded-2xl border border-border bg-surface-raised shadow-lg focus-visible:outline-none"
+          className="dialog-panel fixed inset-x-3 top-[10dvh] z-[var(--z-overlay)] mx-auto flex max-h-[70dvh] max-w-xl flex-col overflow-hidden rounded-2xl border border-border bg-surface-raised shadow-lg focus-visible:outline-none"
         >
           <RadixDialog.Title className="sr-only">Search and go to</RadixDialog.Title>
           <div className="flex items-center gap-3 border-b border-border px-4">

@@ -18,9 +18,9 @@
  *      surface measured as if it were solid is a guess.
  *   4. The alert colour stays visibly apart from the accent, so "live" never
  *      reads as "a button".
- * And that colour lives only in the sources: tokens.css and palettes.css hold
- * no colour literal, and every --color-* name in @theme is a token a palette
- * declares.
+ * And that colour lives only in the sources: tokens.css, palettes.css and
+ * motion.css hold no colour literal, and every --color-* name in @theme is a
+ * token a palette declares.
  *
  * The night band uses a palette's night set, measured here as its dark mode.
  *
@@ -330,7 +330,7 @@ function code(path: string): string {
 }
 
 const LITERAL = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb)\(/gi;
-for (const file of ["../src/styles/tokens.css", "../src/styles/palettes.css"]) {
+for (const file of ["../src/styles/tokens.css", "../src/styles/palettes.css", "../src/styles/motion.css"]) {
   const text = code(file);
   for (const match of text.matchAll(LITERAL)) {
     const line = text.slice(0, match.index).split("\n").length;

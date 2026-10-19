@@ -1,4 +1,6 @@
 /* The token entry point. Colour is defined in styles/themes and nowhere else;
-   palettes.css draws what a palette does with it. */
+   palettes.css draws what a palette does with it, and motion.css how things
+   arrive, open and move between pages. */
 @import "../styles/tokens.css";
 @import "../styles/palettes.css";
+@import "../styles/motion.css";

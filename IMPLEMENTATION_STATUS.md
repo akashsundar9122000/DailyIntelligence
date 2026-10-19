@@ -414,3 +414,45 @@ Still open:
   the clock. A clock time is now one value in claims and records alike: it
   supports a claim stating that time and nothing else; the date beside it
   still supports dates. Pinned by unit tests with a fixed 11:40 record.
+
+## Phase 6c: the landing page in motion, and moving between pages (2026-10-19)
+
+Built:
+
+- **Hero**: the headline arrives word by word and, in the palettes with light,
+  catches it (a slow sheen); the briefs below arrive one after another.
+- **Try a theme**: five swatches under the hero re-skin the whole page in
+  place. The choice is kept in this browser and offered -- not applied -- by the
+  onboarding wizard after sign-up ("Keep Blueprint" / "No thanks").
+- **Scroll story**: each drawing plays when its step is current -- slips fly in
+  and settle, reports slide into one story, heat and confidence fill one after
+  the other (never one bar), the explainer's lines write in and its citation
+  pins pop. The dials in "Hot is not true" sweep to their values and the
+  numbers count up; a screen reader hears the value, never the count.
+- **Small motions**: primary buttons catch a sheen when pointed at (not in
+  Newspaper), questions open to their answer, dialogs and the search palette
+  rise in and fall away, the rail eases between widths.
+- **Page transitions** (React `<ViewTransition>` in a template per section):
+  the content leaves quickly and the next arrives gently, under a frame that
+  holds still. Calm crossfades; Reduced and the OS setting change the page at
+  once.
+- The unused `motion` package is removed: everything here is CSS and the
+  browser's view transitions.
+
+Verified:
+
+- `pnpm verify` green: unit 215, components 40, integration 159, e2e 431
+  (6.7 min) including `p6-landing.spec.ts` (the strip, its hand-off, the
+  onboarding offer saved to the account, the questions, navigation) and the
+  reduced-motion project (headline, scenes and dials drawn finished; the strip
+  works without a transition). Budget: shared 167 KB, all chunks 440 KB.
+- Screenshots read: the landing page in Aurora and Newspaper, day and night,
+  1440 and 390. Fixed from them: the headline's sheen showed almost no colour
+  at rest.
+
+Not done:
+
+- A pointer-following tilt on cards was planned; cards lift on hover instead.
+- The "front page, live" list does not cycle its headlines; it shows the six
+  real ones, which already fills the column.
+- The interest picker further down keeps its square chips.

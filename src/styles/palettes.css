@@ -94,7 +94,9 @@
 :root[data-palette="aurora"]:not([data-contrast]) .text-sheen,
 :root:not([data-palette]) .text-sheen {
   background: linear-gradient(100deg, var(--text-primary) 0%, var(--text-primary) 35%, var(--accent) 70%, var(--accent-2) 100%);
-  background-size: 200% 100%;
+  background-size: 160% 100%;
+  /* At rest the light has reached the last words; moving, it drifts back and forth. */
+  background-position: 100% 50%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -106,8 +108,8 @@
   }
 }
 @keyframes sheen {
-  from { background-position: 0% 50%; }
-  to { background-position: 100% 50%; }
+  from { background-position: 100% 50%; }
+  to { background-position: 0% 50%; }
 }
 @media (forced-colors: active) {
   .text-sheen {

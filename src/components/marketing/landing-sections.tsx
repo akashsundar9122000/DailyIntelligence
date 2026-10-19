@@ -1,8 +1,10 @@
 import { ArrowRight, Check, Minus, X } from "lucide-react";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
 
+import { CountUp } from "./count-up";
 import { InterestPicker } from "./interest-picker";
 import { IllustrationNote } from "./section";
 
@@ -45,17 +47,22 @@ function Dial({ label, value, verdict, lines, press }: { label: string; value: n
       <p className="kicker text-text-secondary">{label}</p>
       <div className="mt-4 flex items-end gap-6">
         <svg viewBox="0 0 200 110" className="w-44 shrink-0 sm:w-52" role="img" aria-label={`${label}: ${value} out of 100, ${verdict}`}>
-          <path d="M20 100 A80 80 0 0 1 180 100" fill="none" className="stroke-border-strong" strokeWidth="14" />
+          <path d="M20 100 A80 80 0 0 1 180 100" fill="none" className="stroke-border-strong" strokeWidth="14" strokeLinecap="round" />
+          {/* Sweeps from empty to its value once revealed (motion.css); without motion it is drawn at its value. */}
           <path
             d="M20 100 A80 80 0 0 1 180 100"
             fill="none"
-            className={press ? "stroke-press-solid" : "stroke-text-primary"}
+            className={press ? "dial-arc stroke-press-solid" : "dial-arc dial-arc-confidence stroke-text-primary"}
             strokeWidth="14"
+            strokeLinecap="round"
             strokeDasharray={`${(length * value) / 100} ${length}`}
+            style={{ "--dial-length": length } as CSSProperties}
           />
         </svg>
         <div>
-          <p className="font-display text-6xl font-bold leading-none tabular-nums">{value}</p>
+          <p className="font-display text-6xl font-bold leading-none tabular-nums">
+            <CountUp value={value} />
+          </p>
           <p className="mt-1 font-serif text-lg italic text-text-secondary">{verdict}</p>
         </div>
       </div>
@@ -227,11 +234,12 @@ const QUESTIONS = [
 export function Questions() {
   return (
     <div className="grid gap-x-16 lg:grid-cols-2">
-      {QUESTIONS.map((item) => (
-        <details key={item.q} data-reveal className="group border-t border-border-strong py-5">
+      {QUESTIONS.map((item, index) => (
+        // `faq`: opens to its answer rather than snapping (motion.css).
+        <details key={item.q} data-reveal style={{ "--i": index % 2 } as CSSProperties} className="faq group border-t border-border-strong py-5">
           <summary className="flex cursor-pointer list-none items-start justify-between gap-4 font-display text-xl font-bold leading-snug [&::-webkit-details-marker]:hidden">
             {item.q}
-            <span aria-hidden className="mt-1 text-2xl leading-none transition-transform group-open:rotate-45">
+            <span aria-hidden className="mt-1 text-2xl leading-none text-kicker transition-transform duration-300 ease-spring group-open:rotate-45">
               +
             </span>
           </summary>
@@ -252,7 +260,7 @@ export function ClosingBand() {
         <h2 id="closing-title" className="mt-3 text-[clamp(2.5rem,6vw,4.75rem)] font-bold leading-[1.02]">
           Know what matters.
           <br />
-          <span className="italic">Understand why.</span>
+          <span className="text-sheen italic">Understand why.</span>
         </h2>
         <p className="dek mx-auto mt-5 max-w-2xl text-xl">One email, one code, and the front page is yours. No password, no ads, no guessing at what you believe.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">

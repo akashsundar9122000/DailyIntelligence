@@ -289,9 +289,11 @@ export function AppShell({ user, notifications, strip, children }: { user: Shell
         Skip to content
       </a>
 
+      {/* Named for page transitions (motion.css): the frame holds still while the page under it changes. */}
       <aside
+        style={{ viewTransitionName: "app-rail" }}
         className={cn(
-          "chrome hidden shrink-0 flex-col gap-4 border-r border-border-strong py-4 lg:flex print:hidden!",
+          "vt-frame chrome hidden shrink-0 flex-col gap-4 border-r border-border-strong py-4 transition-[width] duration-300 ease-out lg:flex print:hidden!",
           expanded ? "w-[var(--rail-w)] px-3" : "w-[4.5rem] items-center px-0",
         )}
       >
@@ -325,7 +327,7 @@ export function AppShell({ user, notifications, strip, children }: { user: Shell
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="chrome flex h-[var(--header-h)] shrink-0 items-center gap-3 border-b border-border-strong px-4 pt-[var(--safe-top)] sm:px-6 print:hidden!">
+        <header style={{ viewTransitionName: "app-header" }} className="vt-frame chrome flex h-[var(--header-h)] shrink-0 items-center gap-3 border-b border-border-strong px-4 pt-[var(--safe-top)] sm:px-6 print:hidden!">
           <Link href="/app" aria-label={`${brand.name}, For You`} className="lg:hidden">
             <Mark className="size-8" />
           </Link>

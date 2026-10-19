@@ -1,0 +1,269 @@
+/*
+ * Motion for the landing page, the dialogs and the moves between pages.
+ *
+ * The rules from palettes.css hold here too:
+ *   - An entrance (a starting state of hidden, moved or empty) lives inside
+ *     (prefers-reduced-motion: no-preference) AND is excluded under the
+ *     reader's own Reduced setting. The kill switch in tokens.css collapses
+ *     durations; it cannot undo a starting state, so an entrance outside these
+ *     guards would leave content invisible for a reader who asked for stillness.
+ *   - Nothing here loops.
+ *   - Timings come from the palette (--dur-*, --ease-*), so Terminal moves
+ *     quickly and Studio settles, without a rule per palette.
+ *
+ * Every animated value is a var() of a token: no colour is written here.
+ */
+
+/* ------------------------------------------------------------- the hero */
+
+@media (prefers-reduced-motion: no-preference) {
+  /*
+   * The headline arrives word by word. Each word carries --i (its index), set
+   * in the markup; the words are inline spans of one heading, so a screen
+   * reader reads one sentence.
+   */
+  :root:not([data-motion="reduce"]) .hero-word {
+    display: inline-block;
+    animation: word-rise var(--dur-slow) var(--ease-spring) both;
+    animation-delay: calc(var(--i, 0) * 70ms + 80ms);
+  }
+
+  /* Revealed blocks in a row arrive one after another, not all at once. */
+  :root:not([data-motion="reduce"]) [data-reveal][style*="--i"] {
+    transition-delay: calc(var(--i, 0) * 90ms);
+  }
+}
+@keyframes word-rise {
+  from { opacity: 0; transform: translateY(0.45em); filter: blur(var(--reveal-blur)); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+/* -------------------------------------------------------- the scroll story */
+/*
+ * Each drawing plays its scene when its step becomes the current one
+ * ([data-active] on the figure, set by reading-sequence.tsx). An animation
+ * starts when its rule starts to match, so stepping back and forth replays it.
+ * Outside the guards the drawing is simply finished.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  /* Gather: slips arrive from scattered places and settle into the grid. */
+  :root:not([data-motion="reduce"]) [data-active="true"] .scene-gather > * {
+    animation: slip-in var(--dur-slow) var(--ease-spring) both;
+    animation-delay: calc(var(--i, 0) * 55ms);
+  }
+  /* Cluster: the fanned reports slide together into one story. */
+  :root:not([data-motion="reduce"]) [data-active="true"] .scene-cluster > * {
+    animation: gather-in var(--dur-slow) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 80ms);
+  }
+  /* Score: each meter fills from empty, separately -- never one bar for both. */
+  :root:not([data-motion="reduce"]) [data-active="true"] .scene-meter {
+    transform-origin: left center;
+    animation: fill-x 900ms var(--ease-out) both;
+  }
+  :root:not([data-motion="reduce"]) [data-active="true"] .scene-meter-confidence {
+    animation-delay: 220ms;
+  }
+  /* Explain: the lines are written in, then each citation pin pops into place. */
+  :root:not([data-motion="reduce"]) [data-active="true"] .scene-line {
+    transform-origin: left center;
+    animation: fill-x var(--dur-slow) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 160ms);
+  }
+  :root:not([data-motion="reduce"]) [data-active="true"] .scene-pin {
+    animation: pin-pop var(--dur-base) var(--ease-spring) both;
+    animation-delay: calc(var(--i, 0) * 160ms + 320ms);
+  }
+
+  /* Hot is not true: each dial sweeps to its value once it is revealed. */
+  :root:not([data-motion="reduce"]).js-reveal [data-revealed] .dial-arc {
+    animation: dial-sweep 1.2s var(--ease-out) both;
+  }
+  :root:not([data-motion="reduce"]).js-reveal [data-revealed] .dial-arc-confidence {
+    animation-delay: 250ms;
+  }
+}
+@keyframes slip-in {
+  from { opacity: 0; transform: translate(var(--dx, 0), var(--dy, 1rem)) rotate(var(--r, 0deg)) scale(0.92); }
+  to { opacity: 1; }
+}
+@keyframes gather-in {
+  from { opacity: 0; translate: var(--dx, 2.5rem) 0; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes fill-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes pin-pop {
+  from { opacity: 0; transform: scale(0.2); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes dial-sweep {
+  from { stroke-dasharray: 0 var(--dial-length); }
+}
+
+/* --------------------------------------------------------- small motions */
+
+/*
+ * The primary action catches the light when pointed at: a sheen crosses it
+ * once. Paper does not shine, so Newspaper leaves its ink buttons flat.
+ */
+.sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, color-mix(in oklab, var(--on-accent) 24%, transparent) 50%, transparent 70%);
+  transform: translateX(-120%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion="reduce"]):not([data-palette="newspaper"]) .sheen:hover::after {
+    transform: translateX(120%);
+    transition: transform 700ms var(--ease-out);
+  }
+}
+
+/*
+ * A question opens to its answer rather than snapping. interpolate-size lets
+ * height animate to `auto`; a browser without it opens instantly, which is the
+ * old behaviour, not a broken one.
+ */
+:root {
+  interpolate-size: allow-keywords;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion="reduce"]) details.faq::details-content {
+    height: 0;
+    overflow: clip;
+    transition:
+      height var(--dur-base) var(--ease-out),
+      content-visibility var(--dur-base) allow-discrete;
+  }
+  :root:not([data-motion="reduce"]) details.faq[open]::details-content {
+    height: auto;
+  }
+}
+
+/* ---------------------------------------------------------------- dialogs */
+/*
+ * Radix keeps a closing dialog mounted until its exit animation ends, so both
+ * directions animate. Opening rises and focuses in; closing is quicker.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion="reduce"]) .dialog-overlay[data-state="open"] {
+    animation: fade-in var(--dur-base) var(--ease-out) both;
+  }
+  :root:not([data-motion="reduce"]) .dialog-overlay[data-state="closed"] {
+    animation: fade-in var(--dur-fast) var(--ease-out) reverse both;
+  }
+  :root:not([data-motion="reduce"]) .dialog-panel[data-state="open"] {
+    animation: panel-in var(--dur-base) var(--ease-spring) both;
+  }
+  :root:not([data-motion="reduce"]) .dialog-panel[data-state="closed"] {
+    animation: panel-in var(--dur-fast) var(--ease-out) reverse both;
+  }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(0.75rem) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+/* -------------------------------------------------- moving between pages */
+/*
+ * A page's content (template.tsx) leaves quickly and the next arrives gently:
+ * the old content should not compete with the new. The frame -- the app's rail
+ * and header, the site header -- is named and held still, so it is clear the
+ * content moved and not the whole screen.
+ *
+ * Calm keeps the crossfade and drops the travel. Reduced, and the OS setting,
+ * drop both: the page simply changes.
+ */
+::view-transition-old(.page) {
+  animation: var(--dur-fast) var(--ease-out) both page-out;
+}
+::view-transition-new(.page) {
+  animation: var(--dur-slow) var(--ease-out) var(--dur-fast) both page-in;
+}
+:root[data-motion="calm"]::view-transition-old(.page),
+:root[data-motion="calm"]::view-transition-new(.page) {
+  animation-name: fade-out-in;
+}
+:root[data-motion="calm"]::view-transition-old(.page) {
+  animation-direction: reverse;
+}
+:root[data-motion="reduce"]::view-transition-old(.page),
+:root[data-motion="reduce"]::view-transition-new(.page) {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(.page),
+  ::view-transition-new(.page) {
+    animation: none;
+  }
+}
+@keyframes page-out {
+  to { opacity: 0; transform: translateY(-0.35rem); }
+}
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(var(--reveal-distance)); filter: blur(var(--reveal-blur)); }
+}
+@keyframes fade-out-in {
+  from { opacity: 0; }
+}
+
+/* The frame stays put while the page under it changes. */
+::view-transition-group(app-rail),
+::view-transition-group(app-header),
+::view-transition-group(site-header) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(app-rail),
+::view-transition-old(app-header),
+::view-transition-old(site-header) {
+  display: none;
+}
+::view-transition-new(app-rail),
+::view-transition-new(app-header),
+::view-transition-new(site-header) {
+  animation: none;
+}
+
+/*
+ * A change of LOOK (lib/design/transition.ts) is the one transition where the
+ * frame must change with the page: the new palette spreads across everything.
+ * The frame drops its name for that one, so it is part of the root snapshot.
+ */
+:root[data-look-transition] .vt-frame {
+  view-transition-name: none !important;
+}
+
+/*
+ * The page's own root snapshot does not crossfade during a navigation: only
+ * the content (.page) moves. During a change of look the root is what
+ * animates, so it keeps the browser's crossfade (or the circle, set in JS).
+ */
+:root:not([data-look-transition])::view-transition-old(root),
+:root:not([data-look-transition])::view-transition-new(root) {
+  animation: none;
+}
+:root[data-look-transition="reveal"]::view-transition-old(root),
+:root[data-look-transition="reveal"]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root[data-look-transition="fade"]::view-transition-old(root),
+:root[data-look-transition="fade"]::view-transition-new(root) {
+  animation-duration: var(--dur-base);
+}

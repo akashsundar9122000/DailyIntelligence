@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { cn } from "@/components/ui/cn";
 
@@ -38,9 +38,12 @@ export const STEPS: readonly Step[] = [
  * for a real story.
  */
 
-function Slip({ className, tag }: { className?: string; tag?: string }) {
+/* A custom property for a scene (motion.css): an index for the stagger, and where a piece comes from. */
+const scene = (values: Record<string, string | number>) => Object.fromEntries(Object.entries(values).map(([key, value]) => [`--${key}`, value])) as CSSProperties;
+
+function Slip({ className, tag, style }: { className?: string; tag?: string; style?: CSSProperties }) {
   return (
-    <div className={cn("border border-border-strong bg-surface p-2.5", className)}>
+    <div className={cn("rounded-md border border-border-strong bg-surface p-2.5", className)} style={style}>
       {tag ? <p className="kicker text-[0.5625rem] text-text-tertiary">{tag}</p> : null}
       <div className="mt-1.5 h-2 w-[85%] bg-text-primary" />
       <div className="mt-1.5 h-1.5 w-[60%] bg-border-strong" />
@@ -48,13 +51,31 @@ function Slip({ className, tag }: { className?: string; tag?: string }) {
   );
 }
 
+/*
+ * Where each slip flies in from when the scene plays. Written out, not
+ * generated: the scatter is the same on every visit, and src/ has no random
+ * numbers (check:provenance).
+ */
+const SCATTER = [
+  ["-3rem", "-2rem", "-8deg"],
+  ["0.5rem", "-3rem", "5deg"],
+  ["3rem", "-1.5rem", "9deg"],
+  ["-3.5rem", "0.5rem", "6deg"],
+  ["1rem", "2.5rem", "-4deg"],
+  ["3.5rem", "0.5rem", "-7deg"],
+  ["-2.5rem", "3rem", "-5deg"],
+  ["-0.5rem", "3.5rem", "7deg"],
+  ["2.5rem", "3rem", "4deg"],
+] as const;
+
 function GatherArt() {
   const tags = ["News index", "Official", "Research", "News index", "Official", "News index", "Research", "News index", "Official"];
   return (
-    <div className="grid grid-cols-3 gap-2.5">
-      {tags.map((tag, index) => (
-        <Slip key={index} tag={tag} className={cn(index % 3 === 1 && "translate-y-3")} />
-      ))}
+    <div className="scene-gather grid grid-cols-3 gap-2.5">
+      {tags.map((tag, index) => {
+        const [dx, dy, r] = SCATTER[index]!;
+        return <Slip key={index} tag={tag} className={cn(index % 3 === 1 && "translate-y-3")} style={scene({ i: index, dx, dy, r })} />;
+      })}
     </div>
   );
 }
@@ -62,10 +83,10 @@ function GatherArt() {
 function ClusterArt() {
   return (
     <div className="flex items-center gap-6">
-      <div className="relative h-44 w-40 shrink-0">
+      <div className="scene-cluster relative h-44 w-40 shrink-0">
         {[0, 1, 2, 3, 4].map((index) => (
           // Fanned slightly, top card square: many reports, settling into one story.
-          <div key={index} className="absolute inset-x-0" style={{ top: `${index * 14}px`, transform: `rotate(${(4 - index) * 1.4}deg)` }}>
+          <div key={index} className="absolute inset-x-0" style={{ top: `${index * 14}px`, transform: `rotate(${(4 - index) * 1.4}deg)`, ...scene({ i: index, dx: `${(index % 2 ? 1 : -1) * (3 + index)}rem` }) }}>
             <Slip className="h-20" tag={index === 4 ? "One story" : undefined} />
           </div>
         ))}
@@ -84,15 +105,15 @@ function ClusterArt() {
   );
 }
 
-function Meter({ label, value, note, emphasis }: { label: string; value: number; note: string; emphasis?: boolean }) {
+function Meter({ label, value, note, emphasis, scene: sceneClass }: { label: string; value: number; note: string; emphasis?: boolean; scene: string }) {
   return (
     <div>
       <div className="flex items-baseline justify-between">
         <p className="kicker text-text-primary">{label}</p>
         <p className="font-display text-3xl font-bold tabular-nums">{value}</p>
       </div>
-      <div className="mt-2 h-3 border border-text-primary bg-surface" role="img" aria-label={`${label}: ${value} out of 100`}>
-        <div className={cn("h-full", emphasis ? "bg-press-solid" : "bg-text-primary")} style={{ width: `${value}%` }} />
+      <div className="mt-2 h-3 overflow-hidden rounded-sm border border-text-primary bg-surface" role="img" aria-label={`${label}: ${value} out of 100`}>
+        <div className={cn("h-full", sceneClass, emphasis ? "bg-press-solid" : "bg-text-primary")} style={{ width: `${value}%` }} />
       </div>
       <p className="mt-1.5 text-sm text-text-secondary">{note}</p>
     </div>
@@ -102,23 +123,26 @@ function Meter({ label, value, note, emphasis }: { label: string; value: number;
 function ScoreArt() {
   return (
     <div className="space-y-6">
-      <Meter label="Heat" value={88} note="Rising fast: many new reports this hour." emphasis />
-      <Meter label="Confidence" value={34} note="Limited: two independent publishers, no official record yet." />
+      {/* Two meters, filled one after the other: two numbers, never one. */}
+      <Meter label="Heat" value={88} note="Rising fast: many new reports this hour." emphasis scene="scene-meter" />
+      <Meter label="Confidence" value={34} note="Limited: two independent publishers, no official record yet." scene="scene-meter scene-meter-confidence" />
     </div>
   );
 }
 
 function ExplainArt() {
   return (
-    <div className="border border-border-strong border-t-2 border-t-rule bg-surface p-4">
+    <div className="card p-4">
       <div className="flex items-center justify-between">
         <p className="kicker text-text-primary">In one minute</p>
         <span className="border border-current px-1.5 py-0.5 text-[0.625rem] font-bold uppercase tracking-[0.08em] text-text-secondary">AI-written</span>
       </div>
       {[92, 80, 86, 54].map((width, index) => (
         <div key={index} className="mt-2.5 flex items-center gap-1.5">
-          <div className="h-2 bg-text-primary" style={{ width: `${width}%` }} />
-          <sup className="font-mono text-[0.625rem] font-bold text-text-secondary">[{index + 1}]</sup>
+          <div className="scene-line h-2 rounded-full bg-text-primary" style={{ width: `${width}%`, ...scene({ i: index }) }} />
+          <sup className="scene-pin inline-block font-mono text-[0.625rem] font-bold text-accent" style={scene({ i: index })}>
+            [{index + 1}]
+          </sup>
         </div>
       ))}
       <div className="mt-4 border-t border-border pt-3">
@@ -136,11 +160,12 @@ function ExplainArt() {
 
 const ART = [GatherArt, ClusterArt, ScoreArt, ExplainArt];
 
-function Figure({ index }: { index: number }) {
+/** `active` plays the drawing's scene (motion.css): it starts each time its step becomes the current one. */
+function Figure({ index, active }: { index: number; active: boolean }) {
   const Art = ART[index]!;
   return (
-    <figure className="space-y-4">
-      <div className="min-h-64 border border-border bg-canvas p-5 sm:p-7">
+    <figure className="space-y-4" data-active={active ? "true" : "false"}>
+      <div className="card min-h-64 p-5 sm:p-7">
         <Art />
       </div>
       <figcaption>
@@ -189,13 +214,13 @@ export function ReadingSequence() {
                 aria-hidden={index !== active}
                 className={cn("transition-opacity duration-500", index === active ? "relative opacity-100" : "pointer-events-none absolute inset-0 opacity-0")}
               >
-                <Figure index={index} />
+                <Figure index={index} active={index === active} />
               </div>
             ))}
           </div>
           <ol className="mt-6 flex gap-2" aria-hidden>
             {STEPS.map((step, index) => (
-              <li key={step.n} className={cn("h-1 flex-1 transition-colors duration-300", index <= active ? "bg-text-primary" : "bg-border-strong")} />
+              <li key={step.n} className={cn("h-1 flex-1 rounded-full transition-colors duration-300", index <= active ? "bg-accent" : "bg-border-strong")} />
             ))}
           </ol>
         </div>
@@ -212,11 +237,11 @@ export function ReadingSequence() {
             className="lg:flex lg:min-h-[72vh] lg:items-center"
           >
             <div className={cn("transition-opacity duration-300 lg:max-w-md", index !== active && "motion-safe:lg:opacity-40")}>
-              <p className="font-display text-6xl font-bold leading-none text-text-tertiary">{step.n}</p>
+              <p className="font-display text-6xl font-bold leading-none text-kicker">{step.n}</p>
               <h3 className="mt-3 text-3xl font-bold leading-tight">{step.title}</h3>
               <p className="mt-3 font-serif text-lg leading-relaxed text-text-secondary">{step.body}</p>
               <div className="mt-6 lg:hidden">
-                <Figure index={index} />
+                <Figure index={index} active={index === active} />
               </div>
             </div>
           </li>
