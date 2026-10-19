@@ -1,4 +1,4 @@
-import { expect, test } from "../support/test";
+import { expect, test, untilHydrated } from "../support/test";
 
 /* Runs only in the reduced-motion project (playwright.config.ts). */
 test.describe("with reduced motion", () => {
@@ -30,6 +30,7 @@ test.describe("with reduced motion", () => {
 
   test("trying a theme still works, without a transition", async ({ page }) => {
     await page.goto("/", { waitUntil: "load" });
+    await untilHydrated(page.getByRole("group", { name: "Theme" }).getByRole("radio"));
     await page.getByRole("group", { name: "Theme" }).getByText("Studio", { exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-palette", "studio");
   });

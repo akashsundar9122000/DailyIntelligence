@@ -1,4 +1,4 @@
-import { test as base, type Page } from "@playwright/test";
+import { expect, test as base, type Locator, type Page } from "@playwright/test";
 
 import { DEFAULT_PALETTE, PALETTES, type Palette } from "../../src/lib/design/palettes";
 
@@ -22,7 +22,7 @@ export const test = base.extend<{ page: Page }>({
   },
 });
 
-export { expect } from "@playwright/test";
+export { expect };
 
 /** Every route a signed-out visitor can reach. Hand-maintained: add new routes here. */
 export const PUBLIC_ROUTES = ["/", "/sources", "/status", "/ai-policy", "/privacy", "/terms", "/login", "/dev/tokens", "/dev/outbox"] as const;
@@ -57,4 +57,21 @@ export async function wearLook(page: Page, { palette, mode, contrast }: Look): P
     },
     [palette, mode, contrast] as const,
   );
+}
+
+/**
+ * Wait until React has hydrated an element, before clicking it.
+ *
+ * A server-rendered control can be clicked before its handler exists: the
+ * browser checks a native radio, nothing is saved, and a test waiting for the
+ * save waits forever. On a fast machine hydration always wins that race; on a
+ * CI runner it did not (the theme picker, 2026-10-19). React marks a hydrated
+ * node with its own properties, which is what this waits for.
+ */
+export async function untilHydrated(locator: Locator): Promise<void> {
+  await expect
+    .poll(() => locator.first().evaluate((element) => Object.keys(element).some((key) => key.startsWith("__reactProps"))), {
+      message: "the control was never hydrated",
+    })
+    .toBe(true);
 }

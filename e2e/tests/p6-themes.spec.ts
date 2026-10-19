@@ -4,13 +4,15 @@ import type { Page } from "@playwright/test";
 import { PALETTE_COPY } from "../../src/config/themes";
 import { DEFAULT_PALETTE, PALETTES, type Palette } from "../../src/lib/design/palettes";
 import { expect, test as signedIn } from "../support/session";
-import { LOOKS, lookName, test as signedOut, type Look, wearLook } from "../support/test";
+import { LOOKS, lookName, test as signedOut, type Look, untilHydrated, wearLook } from "../support/test";
 
 const saved = (page: Page) => page.waitForResponse((response) => response.request().method() === "POST" && response.status() === 200);
 
 /** Choose a theme the way a person does: by clicking its card. */
 async function choosePalette(page: Page, palette: Palette) {
   const radio = page.getByRole("radio", { name: new RegExp(PALETTE_COPY[palette].name) });
+  // The server draws the default as checked; only the hydrated picker knows the reader's palette.
+  await untilHydrated(radio);
   if (await radio.isChecked()) return;
   const save = saved(page);
   await page.locator("label").filter({ has: radio }).click();
@@ -20,6 +22,7 @@ async function choosePalette(page: Page, palette: Palette) {
 
 async function chooseOption(page: Page, group: string, option: string) {
   const radio = page.getByRole("group", { name: group }).getByRole("radio", { name: option, exact: true });
+  await untilHydrated(radio);
   if (await radio.isChecked()) return;
   const save = saved(page);
   await page.getByRole("group", { name: group }).getByText(option, { exact: true }).click();
@@ -29,6 +32,7 @@ async function chooseOption(page: Page, group: string, option: string) {
 
 async function setContrast(page: Page, on: boolean) {
   const toggle = page.getByRole("switch", { name: "High contrast" });
+  await untilHydrated(toggle);
   if ((await toggle.getAttribute("aria-checked")) === String(on)) return;
   const save = saved(page);
   await toggle.click();

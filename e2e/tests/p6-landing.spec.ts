@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { LANDING_PALETTE_KEY } from "../../src/config/themes";
 import { DEFAULT_PALETTE } from "../../src/lib/design/palettes";
 import { expect, test as signedIn } from "../support/session";
-import { test as signedOut } from "../support/test";
+import { test as signedOut, untilHydrated } from "../support/test";
 
 const saved = (page: Page) => page.waitForResponse((response) => response.request().method() === "POST" && response.status() === 200);
 
@@ -17,6 +17,7 @@ signedOut.describe("the landing page, in motion", () => {
     await page.goto("/", { waitUntil: "load" });
     const strip = page.getByRole("group", { name: "Theme" });
     await expect(strip.getByRole("radio")).toHaveCount(5);
+    await untilHydrated(strip.getByRole("radio"));
     await strip.getByText("Terminal", { exact: true }).click();
     const html = page.locator("html");
     await expect(html).toHaveAttribute("data-palette", "terminal");
@@ -58,6 +59,7 @@ signedIn.describe("the theme tried before signing up", () => {
     await expect(html).toHaveAttribute("data-palette", DEFAULT_PALETTE);
     await expect(page.getByText("You tried the Blueprint theme before signing up.")).toBeVisible();
 
+    await untilHydrated(page.getByRole("button", { name: "Keep Blueprint" }));
     const save = saved(page);
     await page.getByRole("button", { name: "Keep Blueprint" }).click();
     await save;
@@ -70,6 +72,7 @@ signedIn.describe("the theme tried before signing up", () => {
     await expect(page.getByRole("radio", { name: /Blueprint/ })).toBeChecked();
 
     // Put the account back for the specs after this one.
+    await untilHydrated(page.getByRole("radio", { name: /Aurora/ }));
     const reset = saved(page);
     await page.locator("label").filter({ has: page.getByRole("radio", { name: /Aurora/ }) }).click();
     await reset;

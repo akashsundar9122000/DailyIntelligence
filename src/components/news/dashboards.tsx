@@ -75,7 +75,13 @@ const SHADES = ["bg-transparent", "bg-ink/15", "bg-ink/35", "bg-ink/60", "bg-ink
 export function TopicHeatmap({ cells }: { cells: HeatmapCell[] }) {
   const totals = new Map<string, number>();
   for (const cell of cells) totals.set(cell.category, (totals.get(cell.category) ?? 0) + cell.stories);
-  const rows = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([category]) => category);
+  // Busiest first; a tie goes by name. Without the second key, which of several
+  // equal sections made the eight depended on the order Postgres grouped them,
+  // and a section could appear on one load and vanish on the next.
+  const rows = [...totals.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 8)
+    .map(([category]) => category);
   const max = Math.max(1, ...cells.map((cell) => cell.stories));
   const value = (category: string, window: number) => cells.find((cell) => cell.category === category && cell.window === window)?.stories ?? 0;
   return (
