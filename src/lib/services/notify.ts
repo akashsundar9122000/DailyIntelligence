@@ -183,8 +183,9 @@ async function record(reader: Reader, pending: Pending, status: "queued" | "supp
 export async function deliverPush(eventId: string, devices: (PushTarget & { id: string })[], payload: PushPayload, sender: PushSender): Promise<{ sent: boolean; revoked: number }> {
   let sent = false;
   let revoked = 0;
-  for (const device of devices) {
-    const outcome = await sender.send(device, payload);
+  // All devices at once: one slow push service must not hold up the next device, or the next reader.
+  const outcomes = await Promise.all(devices.map(async (device) => ({ device, outcome: await sender.send(device, payload) })));
+  for (const { device, outcome } of outcomes) {
     await withSystem("notify.device", (tx) =>
       outcome.ok
         ? tx.execute(sql`update push_subscriptions set last_success_at = now(), failures = 0 where id = ${device.id}::uuid`)

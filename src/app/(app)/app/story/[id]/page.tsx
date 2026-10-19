@@ -8,6 +8,7 @@ import { SplitButton } from "@/app/(app)/app/admin/ops-controls";
 import { AskStory } from "@/components/news/ask-story";
 import { SectionHead } from "@/components/news/edition";
 import { StoryExplainer, type CiteTarget } from "@/components/news/explainer";
+import { VisualExplainer } from "@/components/news/visual-explainer";
 import { PostEmbed } from "@/components/news/post-embed";
 import { ReaderTools } from "@/components/news/reader-tools";
 import { ScoreExplainer } from "@/components/news/score-explainer";
@@ -17,6 +18,7 @@ import { KindBadge, kickerOf, StoryCard } from "@/components/news/story-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { INDIAN_STATES } from "@/config/regions";
+import { buildSlides } from "@/lib/ai/visual";
 import { requireSession } from "@/lib/auth/session";
 import { aiConfigured } from "@/lib/env";
 import { formatInstant, relativeTime, timesLine } from "@/lib/format/date";
@@ -27,6 +29,8 @@ import { relatedStories, storyDetail, type StorySource } from "@/lib/queries/sto
 import { isAdmin } from "@/lib/services/admin";
 import { markOpened } from "@/lib/services/notifications";
 import { previousVisit, recordRead, savedStoryIds } from "@/lib/services/reader";
+
+const REGION_NAMES = new Intl.DisplayNames("en-IN", { type: "region" });
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -107,6 +111,16 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
   const account = plainAccount(detail);
   const explainer = await explainerFor(story.id);
   const conversation = await postsForStory(story.id, 4);
+  // The cards use only what is already on this page: the checked explainer, and the records it was written from.
+  const explained = new Set(explainer?.sourceItemIds ?? []);
+  const slides = explainer
+    ? buildSlides({
+        headline: story.headline,
+        claims: explainer.content,
+        records: sources.filter((source) => explained.has(source.itemId)).map((source) => ({ publisher: source.publisher, official: source.isOfficial, title: source.title, publishedAt: source.publishedAt })),
+        places: story.scope === "india" ? (story.states.length ? story.states.map((code) => INDIAN_STATES.find((state) => state.code === code)?.label ?? code) : ["India"]) : story.countries.map((code) => REGION_NAMES.of(code) ?? code),
+      })
+    : [];
   const admin = await isAdmin(session);
   // S1, S2 ... are the bundle's records in the order the explainer was given them.
   const publisherOf = new Map(sources.map((source) => [source.itemId, source.publisher]));
@@ -170,6 +184,8 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
               recordCount={explainer.sourceItemIds.length}
             />
           ) : null}
+
+          {slides.length > 2 ? <VisualExplainer slides={slides} refs={refs} /> : null}
 
           <section aria-labelledby="glance">
             <SectionHead id="glance" kicker="From the records" title="At a glance" />

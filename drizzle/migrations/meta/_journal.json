@@ -78,6 +78,13 @@
       "when": 1792384604106,
       "tag": "0010_merge_access_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792387045922,
+      "tag": "0011_briefing_review_status",
+      "breakpoints": true
     }
   ]
 }

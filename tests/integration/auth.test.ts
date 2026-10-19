@@ -47,6 +47,14 @@ describe("signing in with an emailed code", () => {
     expect(known.json).toEqual(unknown.json);
   });
 
+  it("will not send any code but a sign-in code over HTTP, so timing cannot tell who has an account", async () => {
+    const existing = await createVerifiedUser();
+    for (const type of ["email-verification", "forget-password", "change-email"]) {
+      const response = await authCall("/email-otp/send-verification-otp", { email: existing.email, type });
+      expect(response.status, type).toBe(400);
+    }
+  });
+
   it("refuses a wrong code and opens nothing", async () => {
     const email = newEmail();
     await requestCode(email);
@@ -172,6 +180,16 @@ describe("step-up", () => {
     expect(reread.stepUpAt).not.toBeNull();
     const { events } = await listSecurityEvents(userId);
     expect(events[0]!.kind).toBe("step_up");
+  });
+
+  it("spends the code: the one that proved identity cannot prove it again", async () => {
+    const { cookie } = await createVerifiedUser();
+    const headers = cookieHeaders(cookie);
+    const session = (await sessionFromHeaders(headers))!;
+    await sendStepUpCode(session, headers);
+    const code = await latestCode(session.user.email, "confirm-code");
+    await stepUpWithCode(session, code, headers);
+    await expect(stepUpWithCode(session, code, headers)).rejects.toMatchObject({ code: "VALIDATION" });
   });
 
   it("refuses a wrong code and leaves the session unstamped", async () => {

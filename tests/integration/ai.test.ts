@@ -237,6 +237,20 @@ describe("asking about a story", () => {
     expect(await askAboutStory(userId, storyId, "Who visited?", scriptedModel([JSON.stringify({ answerable: false, answer: [] })]))).toEqual({ kind: "not-in-sources" });
   });
 
+  it("is limited per network too, so many free accounts on one address share one allowance", async () => {
+    vi.stubEnv("AI_LIMIT_PER_IP", "1");
+    vi.resetModules();
+    const fresh = await import("@/lib/services/ask");
+    const { storyId } = await seedStory();
+    const first = await createVerifiedUser();
+    const second = await createVerifiedUser();
+    const model = scriptedModel([JSON.stringify({ answerable: false, answer: [] })]);
+    await fresh.askAboutStory(first.userId, storyId, "Who said it?", model, "198.51.100.200");
+    await expect(fresh.askAboutStory(second.userId, storyId, "Who said it?", model, "198.51.100.200")).rejects.toMatchObject({ code: "RATE_LIMITED" });
+    vi.unstubAllEnvs();
+    await (await import("@/lib/db/client")).closeDb();
+  });
+
   it("is limited per reader, and an unknown story is not found", async () => {
     vi.stubEnv("AI_LIMIT_PER_USER", "1");
     vi.resetModules();

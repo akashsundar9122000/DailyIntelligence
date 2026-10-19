@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
            */
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" },
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+          // Nothing here is meant to be loaded by another site's page.
+          { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
           // Nothing in the product needs a device sensor; deny rather than leave open.
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },

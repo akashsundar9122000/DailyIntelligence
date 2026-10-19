@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { dryRun, mergeStories, resolveReport, setOpsSwitch, setSourceEnabled, splitItem, testSendToSelf } from "@/lib/services/admin";
+import { dryRun, mergeStories, resolveReport, reviewExplainer, setOpsSwitch, setSourceEnabled, splitItem, testSendToSelf } from "@/lib/services/admin";
 import { SWITCHES, type SwitchKey } from "@/lib/services/ops";
 
 import { signedInAction } from "./_define";
@@ -56,4 +56,10 @@ export const splitItemAction = signedInAction(z.object({ storyId: z.uuid(), item
   const result = await splitItem(session, input);
   revalidatePath(`/app/story/${input.storyId}`);
   return result;
+});
+
+export const reviewExplainerAction = signedInAction(z.object({ id: z.uuid(), approve: z.boolean(), note: z.string().max(500).default("") }), async (input, { session }) => {
+  await reviewExplainer(session, input);
+  revalidatePath("/app/admin");
+  return { id: input.id, approve: input.approve };
 });

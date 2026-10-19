@@ -11,6 +11,7 @@
  *   pnpm build && node scripts/shoot.mjs / /dev/tokens
  *   SHOOT_THEMES=light,dark,contrast node scripts/shoot.mjs /dev/tokens
  *   SHOOT_SIGNED_IN=1 node scripts/shoot.mjs /app /app/settings/appearance
+ *   SHOOT_SIGNED_IN=1 SHOOT_CLICK="Play the cards" SHOOT_WAIT=1500 node scripts/shoot.mjs /app/story/<id>
  *
  * Signed in, it uses one account in the LOCAL development database, created
  * through the real sign-up pages the first time and signed in to afterwards.
@@ -142,6 +143,16 @@ try {
           throw new Error(`${route} answered ${response?.status() ?? "nothing"} — refusing to photograph an error page`);
         }
         await page.evaluate(() => document.fonts.ready);
+        // SHOOT_CLICK="Play the cards": press a button first, to photograph a state rather than a page as it loads.
+        if (process.env.SHOOT_CLICK) {
+          const button = page.getByRole("button", { name: process.env.SHOOT_CLICK }).first();
+          if (await button.count()) {
+            await button.scrollIntoViewIfNeeded();
+            await button.click();
+          }
+        }
+        // SHOOT_WAIT=4000: give embeds (frames that load from another site) time to draw.
+        if (process.env.SHOOT_WAIT) await page.waitForTimeout(Number(process.env.SHOOT_WAIT));
         const slug = route === "/" ? "home" : route.replace(/^\//, "").replace(/[/?&=,]/g, "-");
         const file = `shots/${slug}-${theme}-${viewport.name}.png`;
         await page.screenshot({ path: file, fullPage: true });

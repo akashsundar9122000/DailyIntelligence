@@ -3,7 +3,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 
 import { getAuthDb } from "@/lib/db/client";
-import { sessions } from "@/lib/db/schema";
+import { sessions, verifications } from "@/lib/db/schema";
 import { AppError } from "@/lib/errors";
 
 import { authFor } from "./auth";
@@ -54,6 +54,9 @@ export async function stepUpWithCode(session: CurrentSession, code: string, requ
   }
   // Both the session and its user are named: this connection is the authentication role's, where no policy narrows the rows.
   await getAuthDb().update(sessions).set({ stepUpAt: new Date() }).where(and(eq(sessions.id, session.sessionId), eq(sessions.userId, session.user.id)));
+  // Spent: the library leaves a checked code valid until it expires, so the code that just proved identity
+  // would also have authorised the next sensitive step -- deleting the account among them.
+  await getAuthDb().delete(verifications).where(eq(verifications.identifier, `email-verification-otp-${session.user.email.toLowerCase()}`));
   await recordSecurityEvent(session.user.id, "step_up", {
     ip: requestHeaders.get("x-real-ip"),
     userAgent: requestHeaders.get("user-agent"),

@@ -3,7 +3,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { CurrentSession } from "@/lib/auth/session";
 import { closeDb } from "@/lib/db/client";
-import { mergeStories, openReports, possibleDuplicates, resolveReport, splitItem } from "@/lib/services/admin";
+import type { ChatModel } from "@/lib/ai/nvidia-client";
+import { explainerFor } from "@/lib/queries/ai";
+import { heldExplainers, mergeStories, openReports, possibleDuplicates, resolveReport, reviewExplainer, splitItem } from "@/lib/services/admin";
+import { runEnrichment } from "@/lib/services/enrichment";
 import { fileReport, toggleBookmark } from "@/lib/services/reader";
 
 import { createVerifiedUser, newEmail } from "./auth-helpers";
@@ -17,6 +20,7 @@ import { createVerifiedUser, newEmail } from "./auth-helpers";
 const ADMIN = `newsroom-${Date.now()}@example.in`;
 // Before anything reads the environment: each test file has its own module registry.
 process.env.ADMIN_EMAILS = ADMIN;
+process.env.EDITORIAL_REVIEW = "1";
 
 afterAll(async () => {
   await closeDb();
@@ -49,7 +53,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await ownerQuery("truncate sources, raw_source_items, stories, story_items, story_scores, story_embeddings, content_reports, audit_events cascade");
+  await ownerQuery("truncate sources, raw_source_items, stories, story_items, story_scores, story_embeddings, content_reports, audit_events, ai_briefings cascade");
   sourceId = (
     await ownerQuery<{ id: string }>(
       `insert into sources (id, key, name, canonical_domain, source_type, provider, feed_url, country_or_region, rights_status, headline_display_allowed, enabled)
@@ -141,5 +145,38 @@ describe("the newsroom tools", () => {
     ]);
     const pairs = await possibleDuplicates(admin);
     expect(pairs.map((pair) => [pair.keepId, pair.mergeId])).toEqual([[a.id, b.id]]);
+  });
+});
+
+describe("editorial review", () => {
+  /** A model that repeats the first record's headline, cited: always passes the checks. */
+  const careful: ChatModel = {
+    requestId: "careful",
+    async complete(request) {
+      const records = /<records>\n([\s\S]*?)\n<\/records>/.exec(request.messages.map((message) => message.content ?? "").join("\n"))?.[1] ?? "";
+      const headline = /headline: (.*?)(?: \| |$)/m.exec(records)?.[1] ?? "";
+      return { content: JSON.stringify({ oneMinute: [{ text: `${headline}.`, cites: ["S1"] }], whatHappened: [], whyItMatters: [], keyDetails: [], whatsNext: [], categories: [] }), toolCalls: [], model: "careful/test", usage: null };
+    },
+  };
+
+  it("holds the explainer of a high-impact story until an editor approves it", async () => {
+    const { id } = await story("Harbour strike enters its third week", 2);
+    await ownerQuery("update stories set importance = 90, confidence = 60, source_count = 2 where id = $1", [id]);
+    await runEnrichment({ trigger: "test", model: careful, embedder: null });
+    expect(await ownerQuery("select status from ai_briefings where story_id = $1", [id])).toEqual([{ status: "review" }]);
+    expect(await explainerFor(id)).toBeNull();
+
+    const [held] = await heldExplainers(admin);
+    await expect(reviewExplainer(admin, { id: held!.id, approve: false, note: "" })).rejects.toMatchObject({ code: "VALIDATION" });
+    await reviewExplainer(admin, { id: held!.id, approve: true, note: "" });
+    expect((await explainerFor(id))?.content.oneMinute[0]!.text).toBe("Harbour strike enters its third week (1).");
+    await expect(heldExplainers(reader)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("publishes an ordinary story's explainer without waiting", async () => {
+    const { id } = await story("Harbour strike enters its third week", 2);
+    await ownerQuery("update stories set importance = 40, confidence = 60, source_count = 2 where id = $1", [id]);
+    await runEnrichment({ trigger: "test", model: careful, embedder: null });
+    expect(await ownerQuery("select status from ai_briefings where story_id = $1", [id])).toEqual([{ status: "ready" }]);
   });
 });

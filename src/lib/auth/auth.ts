@@ -256,6 +256,18 @@ function create(secure: boolean) {
         }
 
         /*
+         * Over HTTP, only a SIGN-IN code may be asked for. With sign-up on,
+         * every address gets a sign-in code, so its answer says nothing; any
+         * other type answers at once for an unknown address and only after a
+         * mail is sent for a known one -- a stopwatch tells which addresses
+         * have accounts. Step-up asks for its code from the server, through
+         * auth.api, where there is no request, and is unaffected.
+         */
+        if (ctx.request && CODE_SEND_PATHS.has(ctx.path) && ctx.body?.type !== "sign-in") {
+          throw new APIError("BAD_REQUEST", { message: "Ask for a sign-in code." });
+        }
+
+        /*
          * A cap per ACCOUNT on asking for a code and on trying one. The
          * library's own limits are per address of the caller, and every new
          * code resets its three guesses: together that lets a caller with many
@@ -267,7 +279,8 @@ function create(secure: boolean) {
         const address = typeof ctx.body?.email === "string" ? ctx.body.email.trim().toLowerCase().slice(0, 320) : "";
         const rule = CODE_SEND_PATHS.has(ctx.path) ? ("codeSendPerEmail" as const) : CODE_CHECK_PATHS.has(ctx.path) ? ("codeCheckPerEmail" as const) : null;
         if (rule && address) {
-          const taken = await take(`${rule}:${address}`, LIMITS[rule]);
+          // Guesses at a code fail closed: a counter outage must not become unlimited guessing.
+          const taken = await take(`${rule}:${address}`, LIMITS[rule], undefined, { failClosed: rule === "codeCheckPerEmail" });
           if (!taken.ok) throw new APIError("TOO_MANY_REQUESTS", { message: "Too many attempts for this address. Please wait an hour and try again." });
         }
       }),

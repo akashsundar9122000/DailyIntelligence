@@ -1,0 +1,6 @@
+# Report a security problem privately, through GitHub's advisory form.
+Contact: https://github.com/akashsundar9122000/DailyIntelligence/security/advisories/new
+Expires: 2027-10-19T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://daily-intelligence-gold.vercel.app/.well-known/security.txt
+Policy: https://github.com/akashsundar9122000/DailyIntelligence/security/policy

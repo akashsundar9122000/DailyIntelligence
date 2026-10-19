@@ -9,6 +9,7 @@ import { bundleHash, loadBundle } from "@/lib/ai/bundle";
 import { claimsOf, EXPLAINER_PROMPT_VERSION, readArticleText, writeExplainer, type Explainer, type StoryBundle } from "@/lib/ai/explainer";
 import { nvidiaEmbedder, vectorLiteral, type Embedder } from "@/lib/ai/embeddings";
 import { AiOutOfTime, AiUnavailable, nvidiaModel, type ChatModel } from "@/lib/ai/nvidia-client";
+import type { BriefingStatus } from "@/lib/db/schema/news";
 import { execRows, withSystem } from "@/lib/db/scope";
 import { textArray, uuidArray } from "@/lib/db/sql";
 import { aiConfigured, env } from "@/lib/env";
@@ -74,7 +75,7 @@ async function callsLeftToday(now: Date): Promise<number> {
       execRows<{ used: number }>(
         tx,
         sql`select count(*)::int as used from ai_briefings
-             where status in ('ready', 'rejected') and (generated_at at time zone 'Asia/Kolkata')::date = ${istDay(now)}::date`,
+             where status in ('ready', 'review', 'rejected') and (generated_at at time zone 'Asia/Kolkata')::date = ${istDay(now)}::date`,
       ),
     )
   )[0]!.used;
@@ -108,7 +109,7 @@ async function store(row: {
   kind: "story_explainer" | "edition_briefing";
   storyId?: string;
   editionKey?: string;
-  status: Exclude<Outcome, "skipped">;
+  status: BriefingStatus;
   model: string | null;
   promptVersion: string;
   hash: string;
@@ -135,6 +136,11 @@ async function store(row: {
   });
 }
 
+/** Held for an editor: the stories where a wrong sentence would cost most, or that rest on least. */
+export function needsReview(story: { importance: number; confidence: number }): boolean {
+  return story.importance >= 80 || story.confidence < 35;
+}
+
 async function explain(model: ChatModel, storyId: string): Promise<Outcome> {
   const bundle = await withSystem("ai.bundle", (tx) => loadBundle(tx, storyId));
   if (!bundle || bundle.records.length === 0) return "skipped";
@@ -143,21 +149,23 @@ async function explain(model: ChatModel, storyId: string): Promise<Outcome> {
     execRows<{ status: string }>(
       tx,
       sql`select status from ai_briefings where story_id = ${storyId}::uuid and kind = 'story_explainer' and bundle_hash = ${hash}
-           and status in ('ready', 'rejected') limit 1`,
+           and status in ('ready', 'review', 'rejected') limit 1`,
     ),
   );
   if (previous.length) return "skipped";
-  return explainBundle(model, bundle, hash);
+  const story = (await withSystem("ai.story", (tx) => execRows<{ importance: number; confidence: number }>(tx, sql`select importance, confidence from stories where id = ${storyId}::uuid`)))[0];
+  return explainBundle(model, bundle, hash, env().EDITORIAL_REVIEW === "1" && Boolean(story && needsReview(story)));
 }
 
-async function explainBundle(model: ChatModel, bundle: StoryBundle, hash: string): Promise<Outcome> {
+async function explainBundle(model: ChatModel, bundle: StoryBundle, hash: string, hold = false): Promise<Outcome> {
   const base = { kind: "story_explainer" as const, storyId: bundle.storyId, promptVersion: EXPLAINER_PROMPT_VERSION, hash, itemIds: bundle.records.map((record) => record.itemId) };
   try {
     const outcome = await writeExplainer(model, bundle);
     if (outcome.ok) {
-      const sections = bundle.categories.length === 0 ? outcome.value.categories.filter((slug) => categoryFor(slug)) : [];
+      // A held explainer's section suggestion waits with it: applied when an editor approves (services/admin.ts).
+      const sections = bundle.categories.length === 0 && !hold ? outcome.value.categories.filter((slug) => categoryFor(slug)) : [];
       // Whether any article text was read is part of the record: it bounds what the explainer could know, and the page says so.
-      await store({ ...base, status: "ready", model: outcome.model, content: { ...outcome.value, textRead: readArticleText(bundle) }, rejection: null, usage: outcome.usage, sections });
+      await store({ ...base, status: hold ? "review" : "ready", model: outcome.model, content: { ...outcome.value, textRead: readArticleText(bundle) }, rejection: null, usage: outcome.usage, sections });
       return "ready";
     }
     await store({ ...base, status: "rejected", model: outcome.model, content: outcome.raw ?? null, rejection: outcome.reason.slice(0, 1000), usage: outcome.usage });

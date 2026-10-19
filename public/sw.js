@@ -4,8 +4,9 @@
  * tapped. No caching, no offline copy: a cached edition is yesterday's news
  * presented as today's, and this paper never does that.
  *
- * The payload is our own JSON: { title, body, url, tag }. A url that is not on
- * this site is ignored, so a forged push could not send a reader elsewhere.
+ * The payload is our own JSON: { title, body, url, tag }. A url that does not
+ * resolve to this site is ignored, so a forged push could not send a reader
+ * elsewhere.
  */
 self.addEventListener("push", (event) => {
   let data = {};
@@ -15,7 +16,14 @@ self.addEventListener("push", (event) => {
     data = {};
   }
   const title = typeof data.title === "string" ? data.title : "Daily news update";
-  const url = typeof data.url === "string" && data.url.startsWith("/") && !data.url.startsWith("//") ? data.url : "/app";
+  // Resolved and compared by origin: a prefix test passes "/\\elsewhere.example", which a browser reads as another site.
+  let url = "/app";
+  try {
+    const resolved = typeof data.url === "string" ? new URL(data.url, self.location.origin) : null;
+    if (resolved && resolved.origin === self.location.origin) url = resolved.pathname + resolved.search;
+  } catch {
+    url = "/app";
+  }
   event.waitUntil(
     self.registration.showNotification(title, {
       body: typeof data.body === "string" ? data.body : "",

@@ -7,7 +7,8 @@ import type { Claim } from "@/lib/ai/validate";
 import { withPublic } from "@/lib/db/scope";
 import { aiConfigured } from "@/lib/env";
 import { AppError, notFound, unavailable } from "@/lib/errors";
-import { LIMITS, take } from "@/lib/rate-limit";
+
+import { takeReaderAiCall } from "./ai-budget";
 
 export type AskResult =
   | { kind: "answer"; claims: Claim[]; refs: Record<string, { itemId: string; publisher: string }>; model: string }
@@ -21,16 +22,13 @@ export type AskResult =
  * product needs it kept. The rate limits are per account, hourly and daily,
  * because each question is a paid model call.
  */
-export async function askAboutStory(userId: string, storyId: string, question: string, model?: ChatModel): Promise<AskResult> {
+export async function askAboutStory(userId: string, storyId: string, question: string, model?: ChatModel, ip = "unknown"): Promise<AskResult> {
   const text = question.trim().replace(/\s+/g, " ");
   if (text.length < 3) throw new AppError("VALIDATION", "Ask a question about the story.", { question: "Ask a question about the story." });
   if (text.length > MAX_QUESTION_CHARS) throw new AppError("VALIDATION", `Keep the question under ${MAX_QUESTION_CHARS} characters.`, { question: `Keep it under ${MAX_QUESTION_CHARS} characters.` });
   if (!model && !aiConfigured()) throw unavailable("Questions are not available on this deployment.");
 
-  const hourly = await take(`ask:${userId}`, LIMITS.aiPerUser);
-  if (!hourly.ok) throw new AppError("RATE_LIMITED", "You have asked a lot of questions this hour. Please try again later.");
-  const daily = await take(`ask-day:${userId}`, LIMITS.aiPerUserDaily);
-  if (!daily.ok) throw new AppError("RATE_LIMITED", "You have reached today's limit for questions. It resets tomorrow.");
+  await takeReaderAiCall(userId, ip, "ask");
 
   // The reader's own scope: a withdrawn source is withdrawn from the answer too.
   const bundle = await withPublic((tx) => loadBundle(tx, storyId));

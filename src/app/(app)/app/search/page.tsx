@@ -1,5 +1,6 @@
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 
 import { ChipNav } from "@/components/news/chip-nav";
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { CATEGORIES, isCategorySlug } from "@/config/categories";
 import { requireSession } from "@/lib/auth/session";
+import { clientIp } from "@/lib/http/request";
 import { searchByMeaning } from "@/lib/services/search";
 import { searchableSources, searchStories } from "@/lib/queries/stories";
 import { listInterests, savedStoryIds } from "@/lib/services/reader";
@@ -44,7 +46,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   const stories = tab === "stories" && query ? await searchStories({ query, scope, category, withinHours: Number(days) * 24, minSources: min }) : [];
   // Beside the word search, never instead of it: the stories it found are not repeated.
-  const meaning = tab === "stories" && query ? await searchByMeaning(session.user.id, query, { scope, category, minSources: min }, new Set(stories.map((story) => story.id))) : { stories: [], available: false };
+  const meaning = tab === "stories" && query ? await searchByMeaning(session.user.id, query, { scope, category, minSources: min }, new Set(stories.map((story) => story.id)), undefined, clientIp(await headers())) : { stories: [], available: false };
   const sources = tab === "sources" ? await searchableSources() : [];
   const interests = await listInterests(session.user.id);
   const saved = await savedStoryIds(session.user.id);

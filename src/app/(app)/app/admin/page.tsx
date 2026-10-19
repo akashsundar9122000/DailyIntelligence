@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { getSession } from "@/lib/auth/session";
 import { formatInstant, relativeTime } from "@/lib/format/date";
-import { adminAi, adminNotifications, adminOverview, isAdmin, openReports, possibleDuplicates } from "@/lib/services/admin";
+import { env } from "@/lib/env";
+import { adminAi, adminNotifications, adminOverview, heldExplainers, isAdmin, openReports, possibleDuplicates } from "@/lib/services/admin";
 import { listSwitches } from "@/lib/services/ops";
 
-import { DryRunButton, MergeButton, OpsSwitch, ResolveReport, TestSend } from "./ops-controls";
+import { DryRunButton, MergeButton, OpsSwitch, ResolveReport, ReviewControls, TestSend } from "./ops-controls";
 import { SourceSwitch } from "./source-switch";
 
 export const metadata: Metadata = { title: "Administration" };
@@ -27,7 +28,15 @@ export default async function AdminPage() {
   if (!(await isAdmin(session))) notFound();
   const now = new Date();
   const { sources, runs, jobs, counts } = await adminOverview(session);
-  const [notifications, switches, reports, duplicates, ai] = await Promise.all([adminNotifications(session), listSwitches(), openReports(session), possibleDuplicates(session), adminAi(session)]);
+  const [notifications, switches, reports, duplicates, ai, held] = await Promise.all([
+    adminNotifications(session),
+    listSwitches(),
+    openReports(session),
+    possibleDuplicates(session),
+    adminAi(session),
+    heldExplainers(session),
+  ]);
+  const reviewing = env().EDITORIAL_REVIEW === "1";
   const lastTick = jobs.find((job) => job.job === "tick");
   const attention = sources.filter((source) => source.enabled && (source.health !== "healthy" || source.circuitOpenUntil));
   const failedRuns = runs.filter((run) => run.status === "failed" || run.status === "partial");
@@ -112,6 +121,31 @@ export default async function AdminPage() {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section aria-labelledby="review-heading" className="space-y-3">
+        <SectionHead id="review-heading" kicker={reviewing ? "High impact or thinly sourced: held until approved" : "Off: explainers publish once they pass their checks"} title={`Editorial review (${held.length})`} />
+        {held.length ? (
+          <ul className="divide-y divide-border border-y border-border">
+            {held.map((entry) => (
+              <li key={entry.id} className="space-y-2 py-3">
+                <p className="text-sm">
+                  <a href={`/app/story/${entry.storyId}`} className="font-semibold hover:underline">
+                    {entry.headline}
+                  </a>
+                  <span className="text-xs text-text-tertiary">
+                    {" "}
+                    · importance {entry.importance} · sourced {entry.confidence} · {entry.model}, {relativeTime(entry.generatedAt, now)}
+                  </span>
+                </p>
+                <blockquote className="border-l-[3px] border-border-strong pl-3 font-serif text-base">{entry.oneMinute.map((claim) => `${claim.text} [${claim.cites.map((ref) => ref.slice(1)).join(", ")}]`).join(" ")}</blockquote>
+                <ReviewControls id={entry.id} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-text-secondary">{reviewing ? "Nothing is waiting." : "Set EDITORIAL_REVIEW=1 to hold explainers for high-impact or thinly sourced stories until an editor approves them."}</p>
         )}
       </section>
 

@@ -9,15 +9,25 @@ fast each story is spreading and how well it is sourced as two separate
 numbers. Every headline keeps its publisher, its publication time, the time we
 found it, and a link to the original.
 
+On top of that: explainers and morning and evening briefings written by an AI
+model and shown only after every sentence is checked against the records it
+cites; questions answered from a story's own sources; public conversation from
+platforms whose terms allow it, embedded and linked; search by meaning; alerts
+that never fire on heat alone; and a press room for the people who run it.
+
 - **Specification:** `docs/BLUEPRINT.md`
 - **Approved plan and decisions:** `docs/plan.md`
 - **What is built and verified:** `IMPLEMENTATION_STATUS.md`
 - **Every source and its rights decision:** `docs/SOURCE_RIGHTS.md`, `/sources`
+- **How it fits together:** `docs/ARCHITECTURE.md`
+- **When something goes wrong:** `docs/RUNBOOKS.md`
+- **What it does not do, and why:** `docs/KNOWN_LIMITATIONS.md`
+- **Why there is no native app yet:** `docs/MOBILE_DECISION.md`
 - **Rules for working on it:** `CLAUDE.md`
 
 ## Running it
 
-Node 24, pnpm 12, Postgres 17 locally.
+Node 24, pnpm 12, Postgres 17 locally with pgvector (`brew install pgvector`).
 
 ```sh
 pnpm install
@@ -51,11 +61,19 @@ has a defined behaviour. The ones a deployment needs:
 | `CRON_SECRET` | Lets the schedulers call `/api/cron/*` | `openssl rand -hex 24`; also a GitHub Actions secret |
 | `ADMIN_EMAILS` | Who may open the admin pages | Comma-separated addresses |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Sends sign-in codes | A Gmail app password, or any SMTP service |
-| `NVIDIA_API_KEY` | Explainers and briefings | build.nvidia.com |
+| `NVIDIA_API_KEY` | Explainers, briefings, questions, search by meaning | build.nvidia.com |
+| `AI_DAILY_LIMIT` | Ceiling on model outputs per IST day (default 300) | A number |
+| `EDITORIAL_REVIEW` | `1` holds high-impact or thinly sourced explainers for an editor | `0` or `1` |
+| `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, `WEB_PUSH_SUBJECT` | Push notifications (VAPID) | `npx web-push generate-vapid-keys`; the subject is the site's https URL |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | "Continue with Google" | Google Cloud console; redirect URI `<origin>/api/auth/callback/google` |
 | `YOUTUBE_API_KEY` | Optional video source | Google Cloud console, YouTube Data API v3 |
 
 ## Production
+
+The scheduler is `.github/workflows/tick.yml`: every fifteen minutes it calls
+`/api/cron/tick` (sources), `/api/cron/enrich` (the AI pass) and
+`/api/cron/notify` (alerts), each with its own time budget. Vercel's daily cron
+calls `/api/cron/daily` (mail and the retention purge).
 
 The database is migrated by hand before a deploy, from `.env.neon.local`
 (never committed, never read by Next):

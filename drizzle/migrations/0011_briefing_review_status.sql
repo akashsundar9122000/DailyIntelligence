@@ -1,0 +1,2 @@
+ALTER TABLE "ai_briefings" DROP CONSTRAINT "ai_briefings_status_vocab";--> statement-breakpoint
+ALTER TABLE "ai_briefings" ADD CONSTRAINT "ai_briefings_status_vocab" CHECK ("status" IN ('ready', 'review', 'rejected', 'failed'));

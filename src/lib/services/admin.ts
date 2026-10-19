@@ -357,3 +357,46 @@ export async function adminAi(session: CurrentSession | null): Promise<AdminAi> 
     return { byStatus, ...totals };
   });
 }
+
+export type HeldExplainer = { id: string; storyId: string; headline: string; importance: number; confidence: number; oneMinute: { text: string; cites: string[] }[]; model: string; generatedAt: string };
+
+/** Explainers held for an editor (EDITORIAL_REVIEW), oldest first. */
+export async function heldExplainers(session: CurrentSession | null): Promise<HeldExplainer[]> {
+  await requireAdmin(session);
+  return withSystem("admin.review", (tx) =>
+    execRows<HeldExplainer>(
+      tx,
+      sql`select b.id, b.story_id as "storyId", st.headline, st.importance, st.confidence, b.content->'oneMinute' as "oneMinute", b.model,
+                 ${isoInstant(sql`b.generated_at`)} as "generatedAt"
+            from ai_briefings b join stories st on st.id = b.story_id
+           where b.status = 'review' order by b.generated_at limit 30`,
+    ),
+  );
+}
+
+/** Approve a held explainer (readers see it now, and its section suggestion applies) or reject it with a reason. Audited. */
+export async function reviewExplainer(session: CurrentSession | null, input: { id: string; approve: boolean; note: string }): Promise<void> {
+  const admin = await requireAdmin(session);
+  const note = input.note.trim().slice(0, 500);
+  if (!input.approve && note.length < 3) throw new AppError("VALIDATION", "Say why it is rejected.", { note: "Say why it is rejected." });
+  await withSystem("admin.review.decide", async (tx) => {
+    const rows = await execRows<{ storyId: string; categories: string[] | null }>(
+      tx,
+      sql`update ai_briefings set status = ${input.approve ? "ready" : "rejected"}, rejection = ${input.approve ? null : `Rejected by an editor: ${note}`}
+           where id = ${input.id}::uuid and status = 'review'
+           returning story_id as "storyId", array(select jsonb_array_elements_text(coalesce(content->'categories', '[]'::jsonb))) as categories`,
+    );
+    const row = rows[0];
+    if (!row) throw notFound("That explainer");
+    if (input.approve && row.categories?.length) {
+      await tx.execute(
+        sql`update stories set categories = ${textArray(row.categories.slice(0, 2))}, primary_category = ${row.categories[0]!}, categories_by = 'ai'
+             where id = ${row.storyId}::uuid and cardinality(categories) = 0`,
+      );
+    }
+    await tx.execute(
+      sql`insert into audit_events (id, actor_user_id, action, target_kind, target_id, detail)
+          values (${uuidv7()}::uuid, ${admin.user.id}::uuid, ${input.approve ? "explainer.approve" : "explainer.reject"}, 'explainer', ${input.id}, ${note})`,
+    );
+  });
+}

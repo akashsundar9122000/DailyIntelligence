@@ -67,7 +67,7 @@ async function reader(rules: Record<string, unknown> = {}) {
     [userId, ...Object.values(values)],
   );
   await ownerQuery(`insert into user_interests (id, user_id, kind, value, label, stance) values (gen_random_uuid(), $1, 'category', 'cricket', 'Cricket', 'follow')`, [userId]);
-  const device = await savePushSubscription(userId, { endpoint: `https://push.example/${crypto.randomUUID()}`, p256dh: "p256dh-key-for-tests", auth: "auth-secret", userAgent: "Mozilla/5.0 (Macintosh; Mac OS X 10_15) Chrome/140.0" });
+  const device = await savePushSubscription(userId, { endpoint: `https://fcm.googleapis.com/fcm/send/${crypto.randomUUID()}`, p256dh: "p256dh-key-for-tests", auth: "auth-secret", userAgent: "Mozilla/5.0 (Macintosh; Mac OS X 10_15) Chrome/140.0" });
   return { userId, email, deviceId: device.id };
 }
 
@@ -160,11 +160,22 @@ describe("a reader's devices and notifications", () => {
   it("moves a browser's subscription to whoever signs in on it last", async () => {
     const first = await createVerifiedUser();
     const second = await createVerifiedUser();
-    const endpoint = `https://push.example/${crypto.randomUUID()}`;
+    const endpoint = `https://fcm.googleapis.com/fcm/send/${crypto.randomUUID()}`;
     const input = { endpoint, p256dh: "p256dh-key-for-tests", auth: "auth-secret", userAgent: null };
     await savePushSubscription(first.userId, input);
     await savePushSubscription(second.userId, input);
     expect(await ownerQuery("select user_id from push_subscriptions where endpoint = $1", [endpoint])).toEqual([{ user_id: second.userId }]);
+  });
+
+  it("accepts a subscription only from a browser's push service, and at most ten devices per reader", async () => {
+    const { userId } = await createVerifiedUser();
+    const keys = { p256dh: "p256dh-key-for-tests", auth: "auth-secret", userAgent: null };
+    for (const endpoint of ["https://attacker.example/collect", "https://fcm.googleapis.com:8443/x", "http://fcm.googleapis.com/fcm/send/x", "https://evil.push.services.mozilla.com.attacker.example/x"]) {
+      await expect(savePushSubscription(userId, { endpoint, ...keys })).rejects.toMatchObject({ code: "VALIDATION" });
+    }
+    for (let n = 0; n < 10; n++) await savePushSubscription(userId, { endpoint: `https://updates.push.services.mozilla.com/wpush/v2/${crypto.randomUUID()}`, ...keys });
+    await expect(savePushSubscription(userId, { endpoint: `https://web.push.apple.com/${crypto.randomUUID()}`, ...keys })).rejects.toMatchObject({ code: "INVALID_STATE" });
+    expect(await ownerQuery("select 1 from push_subscriptions where user_id = $1", [userId])).toHaveLength(10);
   });
 
   it("sends a test through the real delivery path, and refuses when there is no device", async () => {

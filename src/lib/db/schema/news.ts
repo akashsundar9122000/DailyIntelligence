@@ -96,11 +96,13 @@ export type BriefingKind = (typeof BRIEFING_KINDS)[number];
 
 /**
  * ready     passed validation; may be shown
+ * review    passed validation, and is held for an editor (EDITORIAL_REVIEW):
+ *           a high-impact or thinly sourced story; never shown until approved
  * rejected  the model answered, and the answer failed validation (an uncited
  *           claim, a number no source gave); kept for the record, never shown
  * failed    the model could not be reached or did not answer
  */
-export const BRIEFING_STATUSES = ["ready", "rejected", "failed"] as const;
+export const BRIEFING_STATUSES = ["ready", "review", "rejected", "failed"] as const;
 export type BriefingStatus = (typeof BRIEFING_STATUSES)[number];
 
 export const UPDATE_VERIFICATIONS = ["sourced", "official", "disputed"] as const;

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { TextField } from "@/components/ui/field";
 import { toast } from "@/components/ui/toast";
-import { dryRunAction, mergeStoriesAction, resolveReportAction, setOpsSwitchAction, splitItemAction, testSendAction } from "@/lib/actions/admin";
+import { dryRunAction, mergeStoriesAction, resolveReportAction, reviewExplainerAction, setOpsSwitchAction, splitItemAction, testSendAction } from "@/lib/actions/admin";
 import type { DryRun } from "@/lib/ingestion/pipeline";
 import type { SwitchKey } from "@/lib/services/ops";
 
@@ -205,5 +205,34 @@ export function SplitButton({ storyId, itemId, title }: { storyId: string; itemI
     >
       Not this story
     </Button>
+  );
+}
+
+/** Approve a held explainer, or reject it with a reason. */
+export function ReviewControls({ id }: { id: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  async function decide(approve: boolean) {
+    setBusy(true);
+    const result = await reviewExplainerAction({ id, approve, note });
+    setBusy(false);
+    if (!result.ok) return void toast.error(result.message);
+    toast.success(approve ? "Approved: readers see it now." : "Rejected.");
+    router.refresh();
+  }
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <label className="min-w-0 flex-1 space-y-1 text-xs font-medium">
+        <span>Reason (needed to reject)</span>
+        <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} className="h-9 w-full border border-border-input bg-surface px-2 text-sm" />
+      </label>
+      <Button size="sm" disabled={busy} onClick={() => void decide(true)}>
+        Approve
+      </Button>
+      <Button size="sm" variant="ghost" disabled={busy} onClick={() => void decide(false)}>
+        Reject
+      </Button>
+    </div>
   );
 }

@@ -71,6 +71,8 @@ const schema = z.object({
   NVIDIA_MODEL: z.string().min(1).optional(),
   /** Model outputs (explainers and briefings, accepted or rejected) per IST day. A runaway loop costs one day's budget, not a month's. */
   AI_DAILY_LIMIT: z.coerce.number().int().min(0).max(5000).default(300),
+  /** "1": explainers for high-impact or thinly sourced stories wait for an editor in the press room before readers see them. */
+  EDITORIAL_REVIEW: z.enum(["0", "1"]).default("0"),
 
   /**
    * GDELT's endpoints. Public and keyless; configurable so the tests can point

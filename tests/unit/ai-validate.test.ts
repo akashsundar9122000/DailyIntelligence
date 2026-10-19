@@ -79,3 +79,31 @@ describe("reading numbers and names out of text", () => {
     expect(namesIn("Floods hit Ooty on Monday. Rescue began in October: Teams arrived.")).toEqual(["Ooty"]);
   });
 });
+
+describe("the visual explainer's cards", () => {
+  it("are built only from checked sentences and records: a figure card exists only for a number a sentence states, with its citations", async () => {
+    const { buildSlides } = await import("@/lib/ai/visual");
+    const slides = buildSlides({
+      headline: "Floods cut off 14 villages",
+      claims: {
+        oneMinute: [{ text: "Floods have cut off 14 villages in the hills.", cites: ["S1"] }],
+        keyDetails: [{ text: "The bureau said ₹25 crore was released for relief.", cites: ["S2"] }, { text: "Two rescue teams are on the way.", cites: ["S1"] }],
+        whatHappened: [],
+      },
+      records: [
+        { publisher: "beta.example", official: false, title: "Rescue reaches villages", publishedAt: "2026-10-19T05:00:00Z" },
+        { publisher: "Example Bureau", official: true, title: "Bureau releases ₹25 crore", publishedAt: "2026-10-19T03:00:00Z" },
+      ],
+      places: ["Kerala"],
+    });
+    expect(slides.map((slide) => slide.kind)).toEqual(["title", "summary", "figure", "figure", "timeline", "where", "sources"]);
+    const figures = slides.filter((slide) => slide.kind === "figure");
+    expect(figures).toEqual([
+      { kind: "figure", figure: "₹25", text: "The bureau said ₹25 crore was released for relief.", cites: ["S2"] },
+      { kind: "figure", figure: "14", text: "Floods have cut off 14 villages in the hills.", cites: ["S1"] },
+    ]);
+    // Earliest first, whoever published it.
+    const timeline = slides.find((slide) => slide.kind === "timeline");
+    expect(timeline && timeline.kind === "timeline" ? timeline.entries.map((entry) => entry.publisher) : []).toEqual(["Example Bureau", "beta.example"]);
+  });
+});

@@ -32,7 +32,8 @@ export function webPushSender(): PushSender | null {
             vapidDetails: { subject: WEB_PUSH_SUBJECT!, publicKey: WEB_PUSH_PUBLIC_KEY!, privateKey: WEB_PUSH_PRIVATE_KEY! },
             // An alert that arrives a day late is wrong, not late: let the push service drop it.
             TTL: 6 * 3600,
-            timeout: 10_000,
+            // Short: a push service that has not answered in five seconds is down, and a reader is waiting behind it.
+            timeout: 5_000,
           },
         );
         return { ok: true };

@@ -27,8 +27,32 @@ export function deviceLabel(userAgent: string | null): string {
  * to whoever is signed in now, so alerts never reach the previous reader's
  * successor. That move crosses owners, hence the system scope.
  */
+/*
+ * The browsers' push services, and only these. The notify pass POSTs to every
+ * saved endpoint, so an endpoint is a URL our server calls: accepting any https
+ * address let an account point it at a host of its choosing (blind SSRF) or at
+ * one that holds the connection open and starves everyone after it in the run.
+ */
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^[a-z0-9-]+\.push\.services\.mozilla\.com$/, /^[a-z0-9-]+\.notify\.windows\.com$/, /^web\.push\.apple\.com$/];
+export const MAX_DEVICES = 10;
+
+export function isPushService(endpoint: string): boolean {
+  try {
+    const url = new URL(endpoint);
+    return url.protocol === "https:" && !url.port && PUSH_HOSTS.some((host) => host.test(url.hostname));
+  } catch {
+    return false;
+  }
+}
+
 export async function savePushSubscription(userId: string, input: { endpoint: string; p256dh: string; auth: string; userAgent: string | null }): Promise<{ id: string }> {
-  if (!/^https:\/\//.test(input.endpoint)) throw new AppError("VALIDATION", "That subscription is not from a push service.");
+  if (!isPushService(input.endpoint)) throw new AppError("VALIDATION", "That subscription is not from a browser's push service.");
+  const allowed = await take(`push-subscribe:${userId}`, { max: 20, windowSeconds: 3600 });
+  if (!allowed.ok) throw new AppError("RATE_LIMITED", "Too many devices added this hour. Please try again later.");
+  const active = await withUser(userId, (tx) =>
+    execRows<{ n: number }>(tx, sql`select count(*)::int as n from push_subscriptions where user_id = ${userId}::uuid and revoked_at is null and endpoint <> ${input.endpoint}`),
+  );
+  if (active[0]!.n >= MAX_DEVICES) throw new AppError("INVALID_STATE", `Notifications can be on for at most ${MAX_DEVICES} devices. Remove one first.`);
   const id = uuidv7();
   const rows = await withSystem("push.subscribe", (tx) =>
     execRows<{ id: string }>(

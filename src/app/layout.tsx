@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Newsreader, Playfair_Display } from "next/font/google";
 import type { ReactNode } from "react";
@@ -7,6 +8,7 @@ import { brand } from "@/config/brand";
 import { siteUrl } from "@/config/site";
 import { ThemeChrome } from "@/lib/design/theme";
 import { themeScript } from "@/lib/design/theme-script";
+import { NONCE_HEADER } from "@/proxy";
 import { appearanceScript } from "@/lib/settings/apply";
 
 import "./globals.css";
@@ -44,11 +46,13 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const nonce = (await headers()).get(NONCE_HEADER) ?? undefined;
   return (
     <html lang={brand.locale} className={`${ui.variable} ${display.variable} ${text.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript + appearanceScript }} />
+        {/* The pre-paint theme script carries this request's nonce, or the policy set in src/proxy.ts would refuse it. */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript + appearanceScript }} />
       </head>
       <body className="min-h-dvh antialiased">
         {children}

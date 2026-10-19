@@ -11,8 +11,8 @@ The plan is `docs/plan.md`; the scope is `docs/BLUEPRINT.md`.
 | 1 | Sources, ingestion, clustering, scores, the editions, story page, search, saved, onboarding, settings, admin | Done, deployed, verified in production |
 | 2 | AI explainers with citations, AI category tagging, briefings, ask about a story, eval set | Done, deployed, verified in production |
 | 3 | Live updates, web push, notification policy, digests, resilience | Done, deployed, verified in production |
-| 4 | Social Pulse, dashboards, admin cluster tools and moderation, semantic search | Done (see below for the deploy check) |
-| 5 | Visual explainers, AI cost caps, editorial review, retention purge, hardening, final docs | Not started |
+| 4 | Social Pulse, dashboards, admin cluster tools and moderation, semantic search | Done, deployed, verified in production |
+| 5 | Visual explainers, AI cost caps, editorial review, retention purge, hardening, final docs | Done (see below for the deploy check) |
 
 ## Phase 0
 
@@ -237,6 +237,10 @@ Verified locally:
   were moved above the long list after looking, and the heatmap given a
   logarithmic shade after one section flattened the rest.
 
+Verified in production (commit `9682108`): the smoke suite passed 24 of 24;
+the workflow's tick read 57 posts from mastodon.social and matched one to a
+story, and the AI pass embedded 128 headlines.
+
 Known limitations:
 
 - Clustering still splits some events (the Alberta fire was four stories); the
@@ -245,3 +249,52 @@ Known limitations:
 - A cadence editor was not built: the catalogue sets every source's cadence on
   each tick, so an edit made in the press room would silently revert. Cadence
   stays a reviewed change to `src/lib/sources/catalogue.ts`.
+
+## Phase 5
+
+Built:
+
+- **Content security policy**: a fresh nonce per page with `'strict-dynamic'`
+  (`src/proxy.ts`), frames only from mastodon.social and Bluesky's embed host,
+  `upgrade-insecure-requests` only over https; plus
+  `Cross-Origin-Resource-Policy`, `/.well-known/security.txt`, `SECURITY.md`
+  and GitHub private vulnerability reporting switched on.
+- **Retention purge** in the daily job: items past their source's retention
+  (or ninety days after their story last moved), stories left with nothing,
+  and aged bookkeeping. A story a reader saved, and its headline item, are
+  never purged. Its own run in `job_runs`.
+- **Editorial review** (`EDITORIAL_REVIEW=1`): explainers for high-impact or
+  thinly sourced stories wait in the press room; held output is hidden from
+  readers by row security; approval applies the section suggestion; rejection
+  needs a reason; audited.
+- **Visual explainer**: the checked explainer and its records as a sequence of
+  cards -- summary, key figures with their citations, the reporting timeline,
+  places, sources -- with no footage, no images and no new words; plays only
+  when asked, starts still under reduced motion, full transcript underneath.
+- **Cost and abuse limits**: reader-initiated model calls counted per account,
+  per network address and for all readers in a day, failing closed; guesses at
+  a code fail closed; at most ten push devices per account, only from the
+  browsers' push services, delivered in parallel with a five-second timeout.
+- **From the security review** (an independent read-only pass): the push
+  allowlist and device cap; sign-in codes only over HTTP, closing a timing
+  signal of which addresses have accounts; step-up codes are spent once used;
+  the service worker resolves notification links by origin; `/api/health`
+  holds its answer five seconds.
+- **Docs**: `docs/ARCHITECTURE.md`, `docs/RUNBOOKS.md`,
+  `docs/KNOWN_LIMITATIONS.md`, `docs/MOBILE_DECISION.md`, README updated.
+
+Verified locally:
+
+- `pnpm verify` (see the commit for the counts at the time).
+- The policy end to end: every inline script carries the page's nonce, a new
+  nonce per request, and a frame from a host not on the list is refused while
+  nothing the paper needs is.
+- Load: `node scripts/load.mjs` against a local production build, 20 clients
+  for 20 seconds across five public pages: 515 requests a second, p50 39 ms,
+  p95 71 ms, no errors. (A first run showed 500s on /login: the build refuses
+  the development key, by design; the run was repeated with a throwaway one.)
+
+Not done, and why:
+
+- `__Host-` cookie prefix: better-auth sets `__Secure-`; changing the prefix
+  would sign every reader out, for a small gain. Noted for a later release.

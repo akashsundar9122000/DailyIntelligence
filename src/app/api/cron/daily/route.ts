@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { refuseUnlessScheduler, triggerOf } from "@/lib/http/cron";
 import { flushMail } from "@/lib/mail/send";
 import { recordedJob } from "@/lib/services/jobs";
+import { runRetention } from "@/lib/services/retention";
 
 export const maxDuration = 60;
 
@@ -19,7 +20,9 @@ export async function GET(request: NextRequest) {
   try {
     const { runId, detail } = await recordedJob("daily", triggerOf(request), async () => {
       const mail = await flushMail();
-      return { mail };
+      // The purge records its own run (job "retention"), so a day it did not run is a gap in job_runs.
+      const { detail: purged } = await runRetention({ trigger: triggerOf(request) });
+      return { mail, purged };
     });
     return NextResponse.json({ ok: true, runId, ...detail }, { headers: { "Cache-Control": "no-store" } });
   } catch {
