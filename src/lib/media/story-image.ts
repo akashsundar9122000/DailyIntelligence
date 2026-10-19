@@ -23,7 +23,7 @@ export type StoredImage = {
   width: number;
   height: number;
   alt: string;
-  /** Who to credit: "NASA", "YouTube · DD News", "AI illustration". */
+  /** Whose it is: "NASA", "YouTube · DD News". The kind is added to it ("Photo: NASA"). */
   credit: string;
 };
 
@@ -51,7 +51,9 @@ const LABELS = { photo: "Photo", video: "Video", ai: "AI illustration", map: "Ma
 export function storyImage(story: ImageInputs): StoryImage {
   for (const kind of ORDER) {
     const found = story.stored?.find((image) => image.kind === kind);
-    if (found) return { ...found, label: LABELS[kind] };
+    // The credit says what the picture IS as well as whose: it is the whole
+    // caption, read aloud as it is shown.
+    if (found) return { ...found, credit: kind === "ai" ? LABELS.ai : `${LABELS[kind]}: ${found.credit}`, label: LABELS[kind] };
   }
 
   const place = placeOf(story);
@@ -80,8 +82,12 @@ function placeOf(story: ImageInputs): { focus: string; pins: string[]; alt: stri
     const names = pins.map((code) => INDIAN_STATES.find((state) => state.code === code)!.label);
     return { focus: "IN", pins, alt: `Map of India marking ${listOf(names)}` };
   }
-  const abroad = story.countries.find((code) => code !== "IN");
-  if (abroad && story.scope !== "india") return { focus: abroad, pins: [], alt: `Map marking ${abroad}` };
+  // Abroad, only when the story names ONE country outside India. GDELT lists
+  // every country an article mentions, so with several the first is not
+  // reliably where it happened -- a story about the Pope drew Argentina.
+  // A wrong map is worse than none: then it gets its section's cover.
+  const abroad = [...new Set(story.countries.filter((code) => code !== "IN"))];
+  if (abroad.length === 1 && story.scope !== "india") return { focus: abroad[0]!, pins: [], alt: `Map marking ${abroad[0]}` };
   return null;
 }
 

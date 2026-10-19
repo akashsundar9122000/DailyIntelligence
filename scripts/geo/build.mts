@@ -81,7 +81,7 @@ const round = (value: number) => Math.round(value * 100) / 100;
 
 /** Tolerances, in degrees: a card's outline, and a neighbour's context outline. */
 const MEDIUM = 0.12;
-const COARSE = 0.3;
+const COARSE = 0.45;
 
 function pathOf(rings: Ring[]): string {
   return rings

@@ -36,7 +36,8 @@
     "test:smoke": "playwright test --config playwright.smoke.config.ts",
     "docs:sources": "tsx scripts/docs-sources.mts",
     "themes": "tsx scripts/build-themes.mts",
-    "check:themes": "tsx scripts/build-themes.mts --check"
+    "check:themes": "tsx scripts/build-themes.mts --check",
+    "geo": "tsx scripts/geo/build.mts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

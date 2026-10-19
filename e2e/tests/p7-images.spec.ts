@@ -1,0 +1,57 @@
+import { SEED_STORIES } from "../support/seed";
+import { expect, test } from "../support/session";
+
+const headline = (key: string) => SEED_STORIES.find((story) => story.key === key)!.headline;
+
+test.describe("every story has a picture", () => {
+  for (const route of ["/app", "/app/today", "/app/hot"]) {
+    test(`on ${route}, every story carries a picture, and every large one says what it is`, async ({ page }) => {
+      await page.goto(route);
+      const stories = page.locator("main article");
+      await expect(stories.first()).toBeVisible();
+      const count = await stories.count();
+      for (let index = 0; index < count; index++) {
+        const story = stories.nth(index);
+        await expect(story.locator("figure.story-picture"), `story ${index + 1} on ${route}`).toHaveCount(1);
+        const caption = story.locator("figure.story-picture figcaption");
+        // A thumbnail has no room for a caption; a card's picture always has one.
+        if (await caption.count()) await expect(caption).toHaveText(/Illustration|Map: Natural Earth|Photo|Video|AI illustration|NASA|YouTube/);
+      }
+    });
+  }
+
+  test("a story about an Indian state shows a map naming the state, and one abroad names the country", async ({ page }) => {
+    await page.goto("/app/categories/cricket");
+    const final = page.locator("main article").filter({ hasText: headline("final") });
+    await expect(final.getByRole("img", { name: "Map of India marking Maharashtra" })).toBeVisible();
+
+    await page.goto("/app/categories/football");
+    const club = page.locator("main article").filter({ hasText: headline("football") });
+    await expect(club.getByRole("img", { name: /^Map of Spain/ })).toBeVisible();
+  });
+
+  test("a story naming several countries gets its section's cover, not a guessed map", async ({ page }) => {
+    await page.goto("/app/categories/world-politics");
+    const river = page.locator("main article").filter({ hasText: headline("river") });
+    await expect(river.locator("figure.story-picture figcaption")).toHaveText("Illustration · World Politics");
+    await expect(river.getByRole("img", { name: /^Map/ })).toHaveCount(0);
+  });
+
+  test("the story page opens with its picture, credited", async ({ page }) => {
+    await page.goto("/app/categories/climate");
+    await page.getByRole("link", { name: headline("monsoon") }).first().click();
+    await expect(page).toHaveURL(/\/app\/story\//);
+    const hero = page.locator("header figure.story-picture");
+    await expect(hero).toBeVisible();
+    await expect(hero.getByRole("img", { name: "Map of India marking Kerala" })).toBeVisible();
+    await expect(hero.locator("figcaption")).toHaveText(/Map: Natural Earth/);
+  });
+
+  test("the Hot now column carries a thumbnail beside each story", async ({ page }) => {
+    await page.goto("/app/today");
+    const column = page.getByRole("region", { name: "Hot now" });
+    const rows = column.getByRole("listitem");
+    await expect(rows.first()).toBeVisible();
+    expect(await column.locator("figure.story-picture").count()).toBe(await rows.count());
+  });
+});

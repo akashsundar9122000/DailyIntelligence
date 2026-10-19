@@ -14,6 +14,7 @@ import { PostEmbed } from "@/components/news/post-embed";
 import { ReaderTools } from "@/components/news/reader-tools";
 import { ScoreExplainer } from "@/components/news/score-explainer";
 import { ScorePair } from "@/components/news/score-pair";
+import { StoryPicture } from "@/components/news/story-image";
 import { StoryActions } from "@/components/news/story-actions";
 import { KindBadge, kickerOf, StoryCard } from "@/components/news/story-card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,7 @@ import { formatInstant, relativeTime, timesLine } from "@/lib/format/date";
 import { explainerFor } from "@/lib/queries/ai";
 import { postsForStory, videosForStory } from "@/lib/queries/social";
 import { getPreferences } from "@/lib/queries/preferences";
+import { storyImage } from "@/lib/media/story-image";
 import { relatedStories, storyDetail, type StorySource } from "@/lib/queries/stories";
 import { isAdmin } from "@/lib/services/admin";
 import { markOpened } from "@/lib/services/notifications";
@@ -145,7 +147,8 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
         <span>{kickerOf(story).split(" · ")[0]}</span>
       </nav>
 
-      <header className="border-b-2 border-rule pb-6">
+      <header className="grid gap-6 border-b-2 border-rule pb-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           {story.state === "developing" ? <Badge tone="press">Developing</Badge> : null}
           <p className="kicker text-text-tertiary">{kickerOf(story)}</p>
@@ -175,6 +178,8 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
           <StoryActions storyId={story.id} saved={saved.has(story.id)} url={story.url} />
           <ReaderTools text={`${story.headline}. ${explainer ? explainer.content.oneMinute.map((claim) => claim.text).join(" ") : account}`} />
         </div>
+        </div>
+        <StoryPicture image={storyImage(story)} variant="hero" priority className="lg:mt-1" />
       </header>
 
       <div className="grid gap-12 pt-8 lg:grid-cols-[minmax(0,1fr)_22rem]">

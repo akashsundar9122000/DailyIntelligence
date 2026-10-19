@@ -151,6 +151,20 @@
   }
 }
 
+/*
+ * A story's picture leans in a little when its card is pointed at: inside its
+ * frame, so the page does not move. Not on touch, where there is no hover to
+ * end it.
+ */
+.story-picture-zoom {
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  :root:not([data-motion="reduce"]) .group:hover .story-picture-zoom {
+    transform: scale(1.045);
+  }
+}
+
 /* ---------------------------------------------------------------- dialogs */
 /*
  * Radix keeps a closing dialog mounted until its exit animation ends, so both

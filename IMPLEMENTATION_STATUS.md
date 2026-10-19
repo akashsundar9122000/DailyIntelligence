@@ -490,3 +490,27 @@ Not done:
 - Verified: `pnpm verify` green, e2e 431. Budget: shared 167 KB (unchanged),
   all chunks 489 KB (was 440: the popover the dropdown is built on, now on
   more pages).
+
+## Phase 7a: a picture for every story (2026-10-19)
+
+- **One resolver** (`src/lib/media/story-image.ts`): licensed photo, official
+  video, AI illustration, map, then the section's cover art -- so every story
+  has a picture and none has one it has no right to. Publisher photos are never
+  a choice.
+- **Cover art** (`components/news/cover-art.tsx`): an abstract drawing per
+  section (17), arranged by the story's id with a seeded sequence (no
+  `Math.random`), coloured only by theme tokens, never in the alert colour
+  (a unit test renders every section and checks).
+- **Maps** (`components/news/place-map.tsx`): Natural Earth's India-view
+  boundaries, simplified by `pnpm geo` into a committed, server-only module;
+  states as pins, not outlines; a map only when the place is reliable (a state,
+  or exactly one country abroad). See `docs/MAP_DATA.md`.
+- **Everywhere**: the story page hero, lead and standard cards, thumbnails in
+  rows and in the Hot now and briefing columns. Captions say what each picture
+  is ("Illustration · Cricket", "Map: Natural Earth").
+- Verified: `pnpm verify` green, e2e 450 including `p7-images.spec.ts`;
+  screenshots read in Aurora and Newspaper, day and night, desktop and phone.
+  Fixed from them: GDELT's country list put Argentina on a story about the
+  Pope (maps now need one country), small countries drew as shards, the
+  sidebars had no pictures, and captions were read twice.
+- Budget: shared 167 KB, all chunks 467 KB (pictures are drawn on the server).

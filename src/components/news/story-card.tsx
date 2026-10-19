@@ -5,12 +5,14 @@ import { cn } from "@/components/ui/cn";
 import { categoryFor } from "@/config/categories";
 import { INDIAN_STATES } from "@/config/regions";
 import { timesLine } from "@/lib/format/date";
+import { storyImage, type StoredImage } from "@/lib/media/story-image";
 import type { StoryCard as Story } from "@/lib/queries/stories";
 
 import { ScorePair } from "./score-pair";
 import { StoryActions } from "./story-actions";
+import { StoryPicture } from "./story-image";
 
-export type CardStory = Story & { sample?: boolean };
+export type CardStory = Story & { sample?: boolean; images?: StoredImage[] };
 
 /** What kind of evidence the headline is. Shown on every card: a press release is not reporting. */
 export function KindBadge({ story }: { story: Pick<CardStory, "contentType" | "isOfficial"> }) {
@@ -67,9 +69,16 @@ export function StoryCard({
     compact: "text-base font-bold leading-snug",
   }[variant];
   const others = story.sourceCount - 1;
+  // Every story has a picture: a licensed photo, a video, an AI illustration,
+  // a map or its section's cover art (lib/media/story-image.ts).
+  const image = storyImage({ ...story, stored: story.images });
+  const wide = variant === "lead" || variant === "standard";
   return (
     <article className={cn("group relative flex flex-col", variant === "row" && "sm:flex-row sm:items-start sm:gap-6", className)} aria-labelledby={`story-${story.id}`}>
-      <div className="min-w-0 flex-1">
+      {wide ? <StoryPicture image={image} variant="card" priority={variant === "lead"} className="mb-3" /> : null}
+      <div className={cn("min-w-0 flex-1", !wide && "flex gap-3 sm:gap-4")}>
+        {wide ? null : <StoryPicture image={image} variant="thumb" className={variant === "compact" ? "order-last" : undefined} />}
+        <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           {story.sample ? <Badge tone="press">Sample</Badge> : null}
           {story.state === "developing" && story.heat >= 60 ? <Badge tone="press">Developing</Badge> : null}
@@ -105,6 +114,7 @@ export function StoryCard({
             {reason}
           </p>
         ) : null}
+        </div>
       </div>
       {signedIn && !story.sample && variant !== "compact" ? (
         <div className={cn("mt-3", variant === "row" && "sm:mt-0")}>

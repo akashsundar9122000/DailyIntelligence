@@ -1,9 +1,11 @@
 import Link from "next/link";
 
 import { relativeTime } from "@/lib/format/date";
+import { storyImage } from "@/lib/media/story-image";
 
 import { SectionHead } from "./edition";
 import type { CardStory } from "./story-card";
+import { StoryPicture } from "./story-image";
 
 /** The numbered Hot Now column: heat with its direction, beside how well each is sourced. */
 export function HotColumn({ stories, now }: { stories: CardStory[]; now: Date }) {
@@ -13,9 +15,9 @@ export function HotColumn({ stories, now }: { stories: CardStory[]; now: Date })
       <SectionHead id="hot-column" kicker="Spreading fastest" title="Hot now" href="/app/hot" />
       <ol className="mt-3 divide-y divide-border">
         {stories.map((story, index) => (
-          <li key={story.id} className="flex gap-3 py-3">
+          <li key={story.id} className="group flex gap-3 py-3">
             <span className="w-6 shrink-0 font-display text-2xl font-black leading-none text-press tabular-nums">{index + 1}</span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               {story.sample ? (
                 <p className="font-display text-base font-bold leading-snug">{story.headline}</p>
               ) : (
@@ -29,6 +31,7 @@ export function HotColumn({ stories, now }: { stories: CardStory[]; now: Date })
                 {story.sourceCount === 1 ? "source" : "sources"} · {relativeTime(story.lastUpdatedAt, now)}
               </p>
             </div>
+            <StoryPicture image={storyImage({ ...story, stored: story.images })} variant="thumb" />
           </li>
         ))}
       </ol>
@@ -52,15 +55,18 @@ export function BriefingColumn({ entries }: { entries: { story: CardStory; reaso
       </h2>
       <ol className="mt-3 space-y-3">
         {entries.map(({ story, reason }) => (
-          <li key={story.id} className="border-t border-border pt-3 first:border-0 first:pt-0">
-            {story.sample ? (
-              <p className="font-display font-bold leading-snug">{story.headline}</p>
-            ) : (
-              <Link href={`/app/story/${story.id}`} className="font-display font-bold leading-snug hover:underline">
-                {story.headline}
-              </Link>
-            )}
-            {reason ? <p className="mt-0.5 text-xs text-text-tertiary">{reason}</p> : null}
+          <li key={story.id} className="group flex gap-3 border-t border-border pt-3 first:border-0 first:pt-0">
+            <div className="min-w-0 flex-1">
+              {story.sample ? (
+                <p className="font-display font-bold leading-snug">{story.headline}</p>
+              ) : (
+                <Link href={`/app/story/${story.id}`} className="font-display font-bold leading-snug hover:underline">
+                  {story.headline}
+                </Link>
+              )}
+              {reason ? <p className="mt-0.5 text-xs text-text-tertiary">{reason}</p> : null}
+            </div>
+            <StoryPicture image={storyImage({ ...story, stored: story.images })} variant="thumb" />
           </li>
         ))}
       </ol>
