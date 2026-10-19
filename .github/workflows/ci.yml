@@ -12,7 +12,10 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The gate took about 19 minutes once the accessibility check ran in every
+    # theme (2026-10-19); 25 left one slow runner between a green commit and a
+    # cancelled one. A real hang still ends here, not after GitHub's six hours.
+    timeout-minutes: 35
 
     services:
       postgres:
