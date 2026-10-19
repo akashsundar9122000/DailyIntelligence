@@ -167,8 +167,6 @@ test.describe("live updates", () => {
   test("an open page offers stories that arrived after it was drawn, and loads them only when asked", async ({ page }) => {
     await page.clock.install();
     await page.goto("/app/hot");
-    // The fake clock also drives React's own scheduling: let the page finish hydrating, so the poll's timer exists before time jumps.
-    await page.clock.runFor(2_000);
     const item = (
       await owner<{ id: string }>(
         `insert into raw_source_items (id, source_id, provider_item_id, canonical_url, url_hash, publisher_domain, title, normalized_title)
@@ -184,9 +182,12 @@ test.describe("live updates", () => {
       )
     )[0]!.id;
     try {
-      await page.clock.runFor(65_000);
       const banner = page.getByRole("button", { name: /1 new story · show/ });
-      await expect(banner).toBeVisible();
+      // A minute of page time at a time until the poll has run: on a slow runner the page may still be hydrating after the first minute.
+      await expect(async () => {
+        await page.clock.runFor(65_000);
+        await expect(banner).toBeVisible({ timeout: 2_000 });
+      }).toPass({ timeout: 30_000 });
       await expect(page.getByRole("heading", { level: 3, name: "Late edition: harbour reopens after the storm" })).toHaveCount(0);
       await banner.click();
       await expect(page.getByRole("heading", { level: 3, name: "Late edition: harbour reopens after the storm" })).toBeVisible();
