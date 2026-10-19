@@ -20,8 +20,8 @@ measured gap, not an oversight left unsaid.
   stories appear in the India edition.
 - **Bluesky is not connected**: its developer guidelines require a public,
   regularly monitored contact email, which is the owner's to choose. The
-  connector is built and tested. **YouTube is not connected**: its terms forbid
-  automated access other than through its API, and no API key has been issued.
+  connector is built and tested. **YouTube** shows official channels' videos
+  only, never counted or scored, as its API policies require.
 
 ## Accuracy
 

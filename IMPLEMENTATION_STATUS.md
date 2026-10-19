@@ -304,3 +304,17 @@ Not done, and why:
 
 - `__Host-` cookie prefix: better-auth sets `__Secure-`; changing the prefix
   would sign every reader out, for a small gain. Noted for a later release.
+
+## After phase 5: YouTube and Google sign-in (2026-10-19)
+
+- **YouTube connected** (`6040540`), after reading the YouTube API Services
+  Developer Policies: seven official channels (NASA, WHO, the UN, PIB India,
+  ISRO, DD News, Reuters), public and embeddable videos only, in YouTube's own
+  unaltered player (privacy-enhanced mode), kept seven days, no statistics, and
+  never counted or scored (the policies forbid derived metrics and
+  aggregation). Verified in production: the tick read 39 videos and placed 4
+  beside their stories.
+- **Google sign-in fixed.** Production was sending the client id with literal
+  quotation marks, copied from an env file when the variables were first set,
+  and Google answered `invalid_client`. Both Google values were set again
+  without them; Google now shows its sign-in page for this site's callback.
