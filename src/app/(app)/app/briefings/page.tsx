@@ -89,7 +89,7 @@ export default async function BriefingsPage({ searchParams }: { searchParams: Pr
         <section aria-labelledby="edition-briefing" className="space-y-4 lg:pr-8">
           <div className="border-t-2 border-rule pt-2.5">
             <p className="kicker flex items-center gap-1.5 text-text-tertiary">
-              <Sparkles className="size-3.5" aria-hidden /> AI-generated briefing
+              <Sparkles className="size-3.5" aria-hidden data-ai-mark /> AI-generated briefing
             </p>
             <h2 id="edition-briefing" className="text-2xl font-bold leading-tight">
               {edition ? `The ${edition.slot} briefing` : "The edition briefing"}

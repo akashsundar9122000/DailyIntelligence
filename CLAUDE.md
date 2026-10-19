@@ -99,7 +99,7 @@ e2e/                  Playwright: tests/ (desktop, Pixel 7, reduced motion, axe)
 - **Heat is not confidence.** Two scores, stored with their components and a
   version, shown side by side. Nothing may combine them into one number.
 - **Themes are palettes, and the alert colour is reserved in every one.**
-  `data-palette` (Aurora, the default, and Newspaper), `data-theme` (light or
+  `data-palette` (Aurora, the default; Newspaper; Terminal; Blueprint; Studio), `data-theme` (light or
   dark, always concrete) and `data-contrast="more"` are three independent
   attributes. Accents, gradients and status hues are free; the `press` tokens
   mean breaking, live or wrong and nothing else, and `check:contrast` holds them

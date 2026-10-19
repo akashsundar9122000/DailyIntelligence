@@ -128,14 +128,18 @@ async function chooseLook(page, palette, mode, contrast) {
   await page.goto(`${BASE}/app/settings/appearance`, { waitUntil: "load" });
   const name = palette[0].toUpperCase() + palette.slice(1);
   await page.locator("label").filter({ has: page.getByRole("radio", { name: new RegExp(name) }) }).click();
-  await page.locator("label").filter({ hasText: mode === "dark" ? "Night" : "Day" }).first().click();
+  // Inside the Colour scheme group, by exact text: a theme's description can
+  // mention "night", and a loose match once clicked the wrong card.
+  await page.getByRole("group", { name: "Colour scheme" }).getByText(mode === "dark" ? "Night" : "Day", { exact: true }).click();
   const toggle = page.getByRole("switch", { name: "High contrast" });
   if ((await toggle.getAttribute("aria-checked")) !== String(contrast)) await toggle.click();
   const html = page.locator("html");
-  await html.evaluate((el, [p, m]) => new Promise((resolve) => {
+  // A deadline, so a look that never arrives fails loudly instead of hanging the run.
+  await html.evaluate((el, [p, m]) => new Promise((resolve, reject) => {
     const done = () => el.dataset.palette === p && el.dataset.theme === m;
     if (done()) return resolve();
-    new MutationObserver((_, obs) => { if (done()) { obs.disconnect(); resolve(); } }).observe(el, { attributes: true });
+    const timer = setTimeout(() => reject(new Error(`shoot: the page never wore ${p} ${m} (it shows ${el.dataset.palette} ${el.dataset.theme})`)), 10_000);
+    new MutationObserver((_, obs) => { if (done()) { obs.disconnect(); clearTimeout(timer); resolve(); } }).observe(el, { attributes: true });
   }), [palette, mode]);
   // The save is debounced; let it land before the next page is read.
   await page.waitForTimeout(800);

@@ -82,6 +82,13 @@ export function PalettePicker({ onChoose, className }: { onChoose?: (next: Palet
   );
 }
 
+/** Blueprint's graph grid, drawn in the preview's own accent. */
+const GRAPH_PAPER = {
+  backgroundImage:
+    "linear-gradient(to right, color-mix(in oklab, var(--accent) 14%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklab, var(--accent) 14%, transparent) 1px, transparent 1px)",
+  backgroundSize: "12px 12px",
+};
+
 /**
  * A front page in miniature: a masthead rule, a live tag in the alert colour,
  * a headline in the palette's display face, and heat and confidence as two
@@ -101,6 +108,12 @@ function PalettePreview({ palette, mode }: { palette: Palette; mode: "light" | "
           <span className="absolute -right-8 top-6 size-28 rounded-full bg-glow-2 opacity-35 blur-2xl" />
         </span>
       ) : null}
+      {palette === "studio" ? (
+        <span className="pointer-events-none absolute inset-0">
+          <span className="absolute -left-8 -top-12 size-32 rounded-full bg-glow-1 opacity-30 blur-2xl" />
+        </span>
+      ) : null}
+      {palette === "blueprint" ? <span className="pointer-events-none absolute inset-0" style={GRAPH_PAPER} /> : null}
       <span className="relative block">
         <span className="flex items-center justify-between">
           <span className="font-display text-sm font-bold leading-none">{brand.shortName}</span>

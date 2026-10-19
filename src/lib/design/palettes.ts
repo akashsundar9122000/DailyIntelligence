@@ -12,7 +12,7 @@
  * matrix and the screenshot matrix all read this list, so a palette cannot be
  * offered without being measured.
  */
-export const PALETTES = ["aurora", "newspaper"] as const;
+export const PALETTES = ["aurora", "newspaper", "terminal", "blueprint", "studio"] as const;
 export type Palette = (typeof PALETTES)[number];
 
 /** The look a reader gets before choosing one. */

@@ -32,6 +32,7 @@
   display: none;
 }
 :root[data-palette="aurora"]:not([data-contrast]) .atmosphere,
+:root[data-palette="studio"]:not([data-contrast]) .atmosphere,
 :root:not([data-palette]) .atmosphere {
   display: block;
   position: fixed;
@@ -131,4 +132,143 @@
 @keyframes rule-draw {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
+}
+
+/* ---------------------------------------------------------------- terminal */
+
+/*
+ * A prompt before every kicker. The alternative text after the slash is empty,
+ * so a screen reader does not announce "greater than" before each one.
+ */
+:root[data-palette="terminal"] .kicker::before {
+  content: "> " / "";
+  color: var(--accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* A page's title is typed in, once, as a terminal prints a line. */
+  :root[data-palette="terminal"]:not([data-motion="reduce"]) h1 {
+    animation: type-in var(--dur-slow) steps(28, end) both;
+  }
+  /* The screen refreshes once when a page opens: one sweep of light, top to bottom. */
+  :root[data-palette="terminal"]:not([data-motion="reduce"]) body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    height: 28vh;
+    z-index: var(--z-overlay);
+    pointer-events: none;
+    background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--accent-2) 9%, transparent) 70%, transparent);
+    animation: scan 900ms linear 1 both;
+  }
+  /* A caret after a live tag, blinking a few times and then still. */
+  :root[data-palette="terminal"]:not([data-motion]) [data-live]::after {
+    content: "_" / "";
+    margin-left: 0.15em;
+    animation: blink 1s steps(1) 6;
+  }
+}
+@keyframes type-in {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes scan {
+  from { transform: translateY(-30vh); opacity: 1; }
+  to { transform: translateY(110vh); opacity: 0; }
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* --------------------------------------------------------------- blueprint */
+
+/*
+ * The graph grid under the page, drawn from the palette's atmosphere tokens so
+ * check:contrast measures text over its lines. Fixed, behind everything, and
+ * off in high contrast.
+ */
+:root[data-palette="blueprint"]:not([data-contrast]) body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  --grid-line: color-mix(in oklab, var(--glow-1) calc(var(--atmosphere-opacity) * 100%), transparent);
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/*
+ * Dimension ticks at a panel's four corners, as a draughtsman marks the
+ * extent of a drawing. Painted over the panel's own ground.
+ */
+:root[data-palette="blueprint"] .card {
+  background:
+    linear-gradient(var(--accent), var(--accent)) top left / 10px 1px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) top left / 1px 10px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) top right / 10px 1px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) top right / 1px 10px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom left / 10px 1px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom left / 1px 10px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom right / 10px 1px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom right / 1px 10px no-repeat,
+    var(--card-bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The grid is drawn in as the sheet is laid down, once. */
+  :root[data-palette="blueprint"]:not([data-contrast]):not([data-motion="reduce"]) body::before {
+    animation: grid-in 1.2s var(--ease-out) both;
+  }
+  /* Rules are inked left to right, as a pen draws a line. */
+  :root[data-palette="blueprint"]:not([data-motion="reduce"]) .rule-double,
+  :root[data-palette="blueprint"]:not([data-motion="reduce"]) .rule-thick {
+    transform-origin: left center;
+    animation: rule-draw var(--dur-slow) var(--ease-out) both;
+  }
+}
+@keyframes grid-in {
+  from { opacity: 0; background-position: 0 -12px; }
+  to { opacity: 1; background-position: 0 0; }
+}
+
+/* ------------------------------------------------------------------ studio */
+
+/* One spotlight, not three: the middle orb is Aurora's, not Studio's. */
+:root[data-palette="studio"] .atmosphere-orb:nth-child(2) {
+  display: none;
+}
+
+/*
+ * An AI-written passage breathes: its mark glows slowly in the palette's light
+ * and settles. Only the mark, never the text, so nothing being read moves.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-palette="studio"]:not([data-motion]) [data-ai-mark] {
+    animation: ai-breathe 3.6s ease-in-out infinite alternate;
+  }
+}
+@keyframes ai-breathe {
+  from { filter: drop-shadow(0 0 0 transparent); }
+  to { filter: drop-shadow(0 0 6px var(--glow-1)); }
+}
+
+/* The Today page's sky: only Studio draws it (day-scene.tsx). */
+.day-scene {
+  display: none;
+}
+:root[data-palette="studio"]:not([data-contrast]) .day-scene {
+  display: block;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* The sun or the moon rises into place, once. */
+  :root[data-palette="studio"]:not([data-motion="reduce"]) .day-scene-body {
+    animation: rise-body 1.4s var(--ease-spring) both;
+  }
+}
+@keyframes rise-body {
+  from { transform: translateY(3.5rem); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }

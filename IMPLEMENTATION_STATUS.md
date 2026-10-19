@@ -370,3 +370,38 @@ Not green, and why:
 
 Not done yet (6b, 6c): Terminal, Blueprint and Studio; the landing page's
 animated hero, theme strip, scroll story and page transitions.
+
+## Phase 6b: Terminal, Blueprint and Studio (2026-10-19)
+
+Built:
+
+- **Terminal**: navy and amber (paper-grey and dark amber by day), Sofia Sans
+  Condensed over JetBrains Mono, square panels with an amber top bar, a `>`
+  prompt before kickers, page titles typed in once, one scan of light when a
+  page opens, a caret after the live tag.
+- **Blueprint**: blue ink on vellum by day, white linework on blueprint blue at
+  night, Archivo Narrow and Archivo with Azeret Mono, a graph grid under the
+  page that draws in once, dimension ticks on every panel's corners, rules
+  inked left to right. Markup is green: red stays the alert colour.
+- **Studio**: obsidian and indigo (studio-white by day), Manrope and Inter,
+  glossy solid cards, one soft spotlight, AI marks that breathe a slow glow,
+  and a sky over the Today page that follows the hour in India.
+- All five themes have day, night and high contrast; only the chosen theme's
+  fonts download.
+
+Verified:
+
+- `pnpm verify` green: check:contrast 1006 pairs across 20 scopes (three real
+  conflicts found and fixed: Terminal's day amber too close to the alert red;
+  Blueprint's filled alert tag on blue at night, now bright red with dark
+  type); unit 213, components 40, integration 159; e2e 419 passed (6.0 min,
+  axe in all 20 looks on the landing page, sign-in, the design reference, the
+  paper and Settings); budget shared 167 KB, all chunks 438 KB.
+- Screenshots read for every theme, day and night, landing page and the
+  signed-in paper and Today page, at 1440 and 390. Fixed from them: the Today
+  sky overlapped the dateline beneath it.
+
+Still open:
+
+- The AI claim-check gap recorded under 6a is unchanged. Its test passed in
+  this run only because the seeded time did not end in :40.

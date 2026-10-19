@@ -22,7 +22,7 @@ export function LiveFrontPage({ headlines, now, onPress }: { headlines: FrontPag
         </h2>
         {headlines.length > 0 ? (
           <Badge tone="press">
-            <span aria-hidden className="size-1.5 rounded-full bg-on-press" /> Live
+            <span aria-hidden className="size-1.5 rounded-full bg-on-press" /> <span data-live>Live</span>
           </Badge>
         ) : null}
       </div>

@@ -4,7 +4,10 @@
 import type { Palette } from "../../lib/design/palettes";
 
 import { aurora } from "./aurora";
+import { blueprint } from "./blueprint";
 import { newspaper } from "./newspaper";
+import { studio } from "./studio";
+import { terminal } from "./terminal";
 import type { PaletteSource } from "./schema";
 
 /**
@@ -12,4 +15,4 @@ import type { PaletteSource } from "./schema";
  * there with no source here -- or a source for one not listed -- does not
  * compile.
  */
-export const PALETTE_SOURCES: Record<Palette, PaletteSource> = { aurora, newspaper };
+export const PALETTE_SOURCES: Record<Palette, PaletteSource> = { aurora, newspaper, terminal, blueprint, studio };

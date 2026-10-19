@@ -76,7 +76,7 @@ export function StoryExplainer({
       <div className="flex flex-wrap items-end justify-between gap-3 border-t-2 border-rule pt-2.5">
         <div>
           <p className="kicker flex items-center gap-1.5 text-text-tertiary">
-            <Sparkles className="size-3.5" aria-hidden /> AI-generated summary
+            <Sparkles className="size-3.5" aria-hidden data-ai-mark /> AI-generated summary
           </p>
           <h2 id="explainer" className="text-2xl font-bold leading-tight">
             In one minute

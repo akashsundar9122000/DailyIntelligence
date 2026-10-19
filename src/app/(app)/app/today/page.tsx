@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { DemoBanner, SectionHead, StoryList, EmptyEdition, FrontLayout } from "@/components/news/edition";
 import { HotColumn } from "@/components/news/sidebar";
+import { DayScene } from "@/components/news/day-scene";
 import { PageHeader } from "@/components/ui/page-header";
 import { NewStories } from "@/components/news/new-stories";
 import { DayNumbers, TopicHeatmap } from "@/components/news/dashboards";
@@ -36,6 +37,7 @@ export default async function TodayPage() {
   return (
     <div className="mx-auto max-w-[var(--container)] space-y-6">
       <NewStories renderedAt={now.toISOString()} scope={preferences.defaultScope === "both" ? undefined : preferences.defaultScope} />
+      <DayScene />
       <PageHeader kicker={formatDateline(now.toISOString())} title="Today's front page" description={`The ${SCOPE_LABELS[preferences.defaultScope]} edition, by importance: the same page every reader sees.`} />
       {samples.length ? <DemoBanner /> : null}
       {shown.length === 0 ? (

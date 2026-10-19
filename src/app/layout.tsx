@@ -1,6 +1,19 @@
 import { headers } from "next/headers";
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Geist, Geist_Mono, Newsreader, Playfair_Display } from "next/font/google";
+import {
+  Archivo,
+  Archivo_Narrow,
+  Azeret_Mono,
+  Bricolage_Grotesque,
+  Geist,
+  Geist_Mono,
+  Inter,
+  JetBrains_Mono,
+  Manrope,
+  Newsreader,
+  Playfair_Display,
+  Sofia_Sans_Condensed,
+} from "next/font/google";
 import type { ReactNode } from "react";
 
 import { Atmosphere } from "@/components/ui/atmosphere";
@@ -27,7 +40,19 @@ const text = Newsreader({ subsets: ["latin"], variable: "--font-text-serif", dis
 const bricolage = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-bricolage", display: "swap" });
 const display = Playfair_Display({ subsets: ["latin"], variable: "--font-display-serif", display: "swap", preload: false });
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap", preload: false });
-const FONT_VARIABLES = [ui, text, bricolage, display, mono].map((font) => font.variable).join(" ");
+// Terminal
+const sofiaCondensed = Sofia_Sans_Condensed({ subsets: ["latin"], variable: "--font-sofia-condensed", display: "swap", preload: false });
+const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains", display: "swap", preload: false });
+// Blueprint
+const archivoNarrow = Archivo_Narrow({ subsets: ["latin"], variable: "--font-archivo-narrow", display: "swap", preload: false });
+const archivo = Archivo({ subsets: ["latin"], variable: "--font-archivo", display: "swap", preload: false });
+const azeret = Azeret_Mono({ subsets: ["latin"], variable: "--font-azeret", display: "swap", preload: false });
+// Studio
+const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope", display: "swap", preload: false });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap", preload: false });
+const FONT_VARIABLES = [ui, text, bricolage, display, mono, sofiaCondensed, jetbrains, archivoNarrow, archivo, azeret, manrope, inter]
+  .map((font) => font.variable)
+  .join(" ");
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

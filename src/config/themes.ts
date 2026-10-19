@@ -16,6 +16,18 @@ export const PALETTE_COPY: Record<Palette, { name: string; summary: string }> = 
     name: "Newspaper",
     summary: "Ink on newsprint, ruled like a broadsheet. One spot of red, for breaking news only.",
   },
+  terminal: {
+    name: "Terminal",
+    summary: "Navy and amber, condensed type and hard rules. Dense and fast, like a trading desk.",
+  },
+  blueprint: {
+    name: "Blueprint",
+    summary: "Blue ink on vellum over a graph grid; white linework on blue at night. Calm and exact.",
+  },
+  studio: {
+    name: "Studio",
+    summary: "Obsidian and indigo, glossy cards and a soft spotlight. AI passages glow gently.",
+  },
 };
 
 /** "Edition" means India / World / Both; this is the day/night control, and is never called an edition. */
