@@ -19,7 +19,7 @@
  * three kept as they are.
  */
 
-export const SCORE_VERSION = "rules-2026-10-18b";
+export const SCORE_VERSION = "rules-2026-10-19";
 
 export type StoryFacts = {
   /** Items attached in the last hour, and in the six hours before that. */
@@ -36,6 +36,8 @@ export type StoryFacts = {
   /** Minutes since the story was first seen, and since it last gained an item. */
   ageMinutes: number;
   quietMinutes: number;
+  /** Public posts matched to the story in the last six hours, from cleared platforms only. Optional: zero when none is connected. */
+  socialPostsLastSixHours?: number;
 };
 
 export type Scored = { score: number; components: Record<string, number> };
@@ -59,8 +61,9 @@ export function heat(facts: StoryFacts): Scored {
   const spread = saturate(facts.publishersLastSixHours, 4);
   // Half-life of six hours since the last new item: old viral stories cool, however big they were.
   const recency = Math.pow(0.5, facts.quietMinutes / 360);
-  // No permitted social source is connected yet (Social Pulse, phase 4). Zero, and labelled as zero, rather than guessed.
-  const engagement = 0;
+  // Public conversation: matched posts from permitted platforms, with diminishing returns so a pile-on cannot carry a story.
+  // Attention only -- it feeds heat, never confidence, and a post is never evidence.
+  const engagement = saturate(facts.socialPostsLastSixHours ?? 0, 5);
   const breadth = saturate(Math.max(0, facts.countries - 1), 3);
   const components = {
     velocity: tenths(velocity),

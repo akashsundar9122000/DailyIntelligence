@@ -18,7 +18,8 @@ jobs:
       postgres:
         # Production's major version (Neon, 18). Local development runs 17, so
         # this job is the automated environment that matches production.
-        image: postgres:18
+        # pgvector for semantic search (migration 0007); the same version as development.
+        image: pgvector/pgvector:0.8.7-pg18
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: dailyintel_test

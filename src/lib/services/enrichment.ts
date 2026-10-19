@@ -7,6 +7,7 @@ import { categoryFor } from "@/config/categories";
 import { BRIEFING_PROMPT_VERSION, writeBriefing, type BriefingStory } from "@/lib/ai/briefing";
 import { bundleHash, loadBundle } from "@/lib/ai/bundle";
 import { claimsOf, EXPLAINER_PROMPT_VERSION, readArticleText, writeExplainer, type Explainer, type StoryBundle } from "@/lib/ai/explainer";
+import { nvidiaEmbedder, vectorLiteral, type Embedder } from "@/lib/ai/embeddings";
 import { AiOutOfTime, AiUnavailable, nvidiaModel, type ChatModel } from "@/lib/ai/nvidia-client";
 import { execRows, withSystem } from "@/lib/db/scope";
 import { textArray, uuidArray } from "@/lib/db/sql";
@@ -63,6 +64,8 @@ export type EnrichSummary = {
   failed: number;
   dailyCallsLeft: number;
   briefing: { key: string; status: Outcome | "not due" } | null;
+  /** Headlines embedded for search by meaning this run. */
+  embedded?: number;
 };
 
 async function callsLeftToday(now: Date): Promise<number> {
@@ -168,6 +171,43 @@ async function explainBundle(model: ChatModel, bundle: StoryBundle, hash: string
   }
 }
 
+const EMBED_BATCH = 32;
+const EMBED_BATCHES_PER_RUN = 4;
+
+/**
+ * Embed the headlines of recent stories that have no vector, or whose headline
+ * changed since theirs. Headlines only -- the page already shows them -- and
+ * the hash of exactly what was embedded is kept, so the same headline is
+ * never embedded twice.
+ */
+async function embedHeadlines(embedder: Embedder, deadline: number): Promise<number> {
+  let done = 0;
+  for (let batch = 0; batch < EMBED_BATCHES_PER_RUN && deadline - Date.now() > 8_000; batch++) {
+    const due = await withSystem("ai.embed.due", (tx) =>
+      execRows<{ id: string; headline: string; hash: string }>(
+        tx,
+        sql`select st.id, st.headline, md5(st.headline) as hash from stories st
+              left join story_embeddings se on se.story_id = st.id
+             where st.last_updated_at > now() - interval '48 hours' and (se.story_id is null or se.text_hash <> md5(st.headline) or se.model <> ${embedder.model})
+             order by st.importance desc, st.last_updated_at desc
+             limit ${EMBED_BATCH}`,
+      ),
+    );
+    if (due.length === 0) break;
+    const vectors = await embedder.embed(due.map((story) => story.headline), "passage");
+    await withSystem("ai.embed.store", async (tx) => {
+      for (const [index, story] of due.entries()) {
+        await tx.execute(
+          sql`insert into story_embeddings (story_id, model, text_hash, embedding) values (${story.id}::uuid, ${embedder.model}, ${story.hash}, ${vectorLiteral(vectors[index]!)}::halfvec)
+              on conflict (story_id) do update set model = excluded.model, text_hash = excluded.text_hash, embedding = excluded.embedding, embedded_at = now()`,
+        );
+      }
+    });
+    done += due.length;
+  }
+  return done;
+}
+
 async function editionBriefing(model: ChatModel, now: Date, deadline: number): Promise<{ key: string; status: Outcome | "not due" }> {
   const { key, slot } = briefingSlot(now);
   const attempts = await withSystem("ai.briefing.attempts", (tx) =>
@@ -222,7 +262,7 @@ async function editionBriefing(model: ChatModel, now: Date, deadline: number): P
   }
 }
 
-export async function runEnrichment({ trigger, budgetMs = 50_000, model }: { trigger: string; budgetMs?: number; model?: ChatModel }) {
+export async function runEnrichment({ trigger, budgetMs = 50_000, model, embedder }: { trigger: string; budgetMs?: number; model?: ChatModel; embedder?: Embedder | null }) {
   return recordedJob<EnrichSummary>("enrich", trigger, async () => {
     const now = new Date();
     const deadline = Date.now() + budgetMs;
@@ -253,6 +293,16 @@ export async function runEnrichment({ trigger, budgetMs = 50_000, model }: { tri
     await Promise.all(Array.from({ length: PARALLEL }, worker));
 
     const briefing = left > 0 ? await editionBriefing(chat, now, deadline) : null;
-    return { configured: true, explained: counts.ready, rejected: counts.rejected, failed: counts.failed, dailyCallsLeft: left, briefing };
+    // Last, and with whatever time is left: search by meaning is a convenience, the explainers are not.
+    let embedded = 0;
+    const vectors = embedder === undefined ? (model ? null : nvidiaEmbedder({ deadline: deadline - 1_000 })) : embedder;
+    if (vectors) {
+      try {
+        embedded = await embedHeadlines(vectors, deadline);
+      } catch (error) {
+        if (!(error instanceof AiUnavailable)) throw error;
+      }
+    }
+    return { configured: true, explained: counts.ready, rejected: counts.rejected, failed: counts.failed, dailyCallsLeft: left, briefing, embedded };
   });
 }

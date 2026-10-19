@@ -7,10 +7,13 @@ import { DeleteCollection, NewCollection } from "@/components/news/new-collectio
 import { SavedItemControls } from "@/components/news/saved-item";
 import { StoryCard } from "@/components/news/story-card";
 import { PageHeader } from "@/components/ui/page-header";
+import { ReadingStrip } from "@/components/news/dashboards";
 import { requireSession } from "@/lib/auth/session";
 import { formatInstant } from "@/lib/format/date";
 import { storiesByIds } from "@/lib/queries/stories";
 import { listBookmarks, listCollections } from "@/lib/services/reader";
+import { readingNumbers } from "@/lib/queries/dashboards";
+import { getPreferences } from "@/lib/queries/preferences";
 
 export const metadata: Metadata = { title: "Saved" };
 
@@ -27,6 +30,7 @@ export default async function SavedPage({ searchParams }: { searchParams: Promis
   const collection = collections.find((entry) => entry.id === rawCollection);
   const bookmarks = await listBookmarks(session.user.id, collection?.id);
   const live = new Map((await storiesByIds(bookmarks.map((bookmark) => bookmark.storyId))).map((story) => [story.id, story]));
+  const reading = await readingNumbers(session.user.id, (await getPreferences(session.user.id)).readingHistory);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -36,6 +40,7 @@ export default async function SavedPage({ searchParams }: { searchParams: Promis
         description={collection ? `${collection.count} saved ${collection.count === 1 ? "story" : "stories"} in this collection.` : "Stories you saved, newest first, with your private notes."}
         actions={<NewCollection />}
       />
+      {collection ? null : <ReadingStrip numbers={reading} />}
       {collections.length ? (
         <ChipNav
           label="Collections"

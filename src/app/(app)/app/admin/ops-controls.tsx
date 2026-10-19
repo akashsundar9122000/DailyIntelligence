@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { TextField } from "@/components/ui/field";
 import { toast } from "@/components/ui/toast";
-import { dryRunAction, setOpsSwitchAction, testSendAction } from "@/lib/actions/admin";
+import { dryRunAction, mergeStoriesAction, resolveReportAction, setOpsSwitchAction, splitItemAction, testSendAction } from "@/lib/actions/admin";
 import type { DryRun } from "@/lib/ingestion/pipeline";
 import type { SwitchKey } from "@/lib/services/ops";
 
@@ -116,6 +116,94 @@ export function TestSend() {
       }}
     >
       Send a test to my devices
+    </Button>
+  );
+}
+
+/** Action or dismiss a reader's report, with an optional note for the audit log. */
+export function ResolveReport({ reportId }: { reportId: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  async function resolve(status: "actioned" | "dismissed") {
+    setBusy(true);
+    const result = await resolveReportAction({ reportId, status, resolution: note });
+    setBusy(false);
+    if (!result.ok) return void toast.error(result.message);
+    toast.success(status === "actioned" ? "Report marked as acted on." : "Report dismissed.");
+    router.refresh();
+  }
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <label className="min-w-0 flex-1 space-y-1 text-xs font-medium">
+        <span>Note (optional)</span>
+        <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} className="h-9 w-full border border-border-input bg-surface px-2 text-sm" />
+      </label>
+      <Button size="sm" variant="secondary" disabled={busy} onClick={() => void resolve("actioned")}>
+        Acted on
+      </Button>
+      <Button size="sm" variant="ghost" disabled={busy} onClick={() => void resolve("dismissed")}>
+        Dismiss
+      </Button>
+    </div>
+  );
+}
+
+/** Merge a suggested duplicate, after a confirmation that names both stories. */
+export function MergeButton({ keepId, mergeId, keepHeadline, mergeHeadline }: { keepId: string; mergeId: string; keepHeadline: string; mergeHeadline: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  return (
+    <>
+      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+        Merge
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen} title="Merge these stories?" description={`"${mergeHeadline}" joins "${keepHeadline}": its reports, readers' saves and its posts move across, and it is removed. This is recorded in the audit log.`}>
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            loading={busy}
+            onClick={async () => {
+              setBusy(true);
+              const result = await mergeStoriesAction({ keepId, mergeId });
+              setBusy(false);
+              if (!result.ok) return void toast.error(result.message);
+              setOpen(false);
+              toast.success(`Merged: ${result.data.movedItems} ${result.data.movedItems === 1 ? "report" : "reports"} moved.`);
+              router.refresh();
+            }}
+          >
+            Merge
+          </Button>
+        </div>
+      </Dialog>
+    </>
+  );
+}
+
+/** On a story page, for an administrator: move one report out to a story of its own. */
+export function SplitButton({ storyId, itemId, title }: { storyId: string; itemId: string; title: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      loading={busy}
+      aria-label={`Move "${title}" to a story of its own`}
+      onClick={async () => {
+        setBusy(true);
+        const result = await splitItemAction({ storyId, itemId });
+        setBusy(false);
+        if (!result.ok) return void toast.error(result.message);
+        toast.success("Moved to a story of its own.");
+        router.push(`/app/story/${result.data.newStoryId}`);
+      }}
+    >
+      Not this story
     </Button>
   );
 }

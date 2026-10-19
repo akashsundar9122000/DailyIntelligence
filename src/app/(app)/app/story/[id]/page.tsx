@@ -1,11 +1,14 @@
 import { ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { SplitButton } from "@/app/(app)/app/admin/ops-controls";
 import { AskStory } from "@/components/news/ask-story";
 import { SectionHead } from "@/components/news/edition";
 import { StoryExplainer, type CiteTarget } from "@/components/news/explainer";
+import { PostEmbed } from "@/components/news/post-embed";
 import { ReaderTools } from "@/components/news/reader-tools";
 import { ScoreExplainer } from "@/components/news/score-explainer";
 import { ScorePair } from "@/components/news/score-pair";
@@ -18,8 +21,10 @@ import { requireSession } from "@/lib/auth/session";
 import { aiConfigured } from "@/lib/env";
 import { formatInstant, relativeTime, timesLine } from "@/lib/format/date";
 import { explainerFor } from "@/lib/queries/ai";
+import { postsForStory } from "@/lib/queries/social";
 import { getPreferences } from "@/lib/queries/preferences";
 import { relatedStories, storyDetail, type StorySource } from "@/lib/queries/stories";
+import { isAdmin } from "@/lib/services/admin";
 import { markOpened } from "@/lib/services/notifications";
 import { previousVisit, recordRead, savedStoryIds } from "@/lib/services/reader";
 
@@ -58,13 +63,14 @@ function plainAccount(detail: NonNullable<Awaited<ReturnType<typeof storyDetail>
   return parts.filter(Boolean).join(" ");
 }
 
-function SourceRow({ source, now, anchor = false }: { source: StorySource; now: Date; /** The citation target: set on one list only, so each id is on the page once. */ anchor?: boolean }) {
+function SourceRow({ source, now, anchor = false, split }: { source: StorySource; now: Date; /** The citation target: set on one list only, so each id is on the page once. */ anchor?: boolean; /** For an administrator: move this report out of the story. */ split?: ReactNode }) {
   return (
     <li id={anchor ? `source-${source.itemId}` : undefined} className="scroll-mt-24 py-4 target:bg-surface-sunken">
       <div className="flex flex-wrap items-center gap-2">
         <p className="font-semibold text-text-primary">{source.publisher}</p>
         <KindBadge story={source} />
         {source.method === "url" ? <Badge>Same article</Badge> : null}
+        {split ? <span className="ml-auto">{split}</span> : null}
       </div>
       <a href={source.url} target="_blank" rel="noopener noreferrer" className="mt-1 block font-display text-lg font-bold leading-snug hover:underline">
         {source.title}
@@ -100,6 +106,8 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
   const timeline = [...sources].sort((a, b) => (a.publishedAt ?? a.ingestedAt).localeCompare(b.publishedAt ?? b.ingestedAt));
   const account = plainAccount(detail);
   const explainer = await explainerFor(story.id);
+  const conversation = await postsForStory(story.id, 4);
+  const admin = await isAdmin(session);
   // S1, S2 ... are the bundle's records in the order the explainer was given them.
   const publisherOf = new Map(sources.map((source) => [source.itemId, source.publisher]));
   const refs: Record<string, CiteTarget> = Object.fromEntries(
@@ -213,11 +221,29 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
 
           {aiConfigured() ? <AskStory storyId={story.id} recordCount={Math.min(story.sourceCount, 12)} /> : null}
 
+          {conversation.length ? (
+            <section aria-labelledby="conversation" className="space-y-4">
+              <SectionHead id="conversation" kicker="Posts, not reporting" title="Public conversation" href="/app/social" linkLabel="Social Pulse" />
+              <p className="text-sm text-text-secondary">What people posted about this story on platforms that allow it. It feeds how hot the story is, never how well it is sourced.</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                {conversation.map((post) => (
+                  <PostEmbed key={post.id} post={post} now={now} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section aria-labelledby="sources">
             <SectionHead id="sources" kicker={`${sources.length} ${sources.length === 1 ? "report" : "reports"} from ${story.sourceCount} ${story.sourceCount === 1 ? "publisher" : "publishers"}`} title="Every source" />
             <ul className="divide-y divide-border">
               {sources.map((source) => (
-                <SourceRow key={source.itemId} source={source} now={now} anchor />
+                <SourceRow
+                  key={source.itemId}
+                  source={source}
+                  now={now}
+                  anchor
+                  split={admin && sources.length > 1 ? <SplitButton storyId={story.id} itemId={source.itemId} title={source.title} /> : undefined}
+                />
               ))}
             </ul>
           </section>

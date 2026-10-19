@@ -98,6 +98,17 @@ Fetched on a schedule. Shown only as the flags allow.
 - **Polled:** every 30 min
 - **From the terms:** “Unless otherwise indicated, information on Board's website is in the public domain and may be copied and distributed without permission. Please cite to the Board as the source of the information.”
 
+### mastodon.social (`mastodon-social`)
+
+- **Kind:** Social · provider `mastodon` · https://mastodon.social/api/v1/timelines/tag/
+- **Terms read:** 2026-10-19 — https://mastodon.social/terms-of-service
+- **Decision:** cleared. Public posts from accounts that opted into discovery, shown only through mastodon.social's own embed and linked to the original. We keep matching keywords, never the post's text; a deleted post is dropped at the next check, and nothing is kept past seven days. Posts are conversation about a story, never evidence for it.
+- **May show:** headline no · excerpt no · AI summary no · media no · commercial use no
+- **Attribution:** @user@mastodon.social, through mastodon.social's own embed, linked to the post
+- **Retention:** 7 days
+- **Polled:** every 15 min
+- **From the terms:** “Whoever owns the Content retains ownership. ... When you upload Content to the Service, you are making it available via the Internet. Anyone, or any computer, might access your Content via RSS aggregators and readers, embed your Content in web pages and other media, or index and store your Content in search engines and databases.”
+
 ## Pending review
 
 Not fetched until the question in each note is settled.
@@ -139,23 +150,12 @@ Not fetched until the question in each note is settled.
 
 - **Kind:** Social · provider `bluesky` · https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed
 - **Terms read:** 2026-10-18 — https://bsky.social/about/support/tos
-- **Decision:** pending_review. Under review: authors keep their copyright and Bluesky's licence does not extend to other apps. Social Pulse will link to and embed posts through Bluesky's own embed, not copy them.
+- **Decision:** pending_review. Not yet: Bluesky's developer guidelines require a public, regularly monitored contact email for any app that reads its network, and this deployment has not published one. The connector is built and tested; it switches on once that address is set. Posts would be shown only through Bluesky's own embed and linked.
 - **May show:** headline no · excerpt no · AI summary no · media no · commercial use no
 - **Attribution:** @handle on Bluesky, linked to the post
 - **Retention:** 7 days
 - **Polled:** every 15 min
 - **From the terms:** “You retain ownership of your Content ... By sharing Content on Bluesky, you grant us a limited, worldwide, non-exclusive, royalty-free license”
-
-### mastodon.social (`mastodon-social`)
-
-- **Kind:** Social · provider `mastodon` · https://mastodon.social/api/v1/timelines/tag/
-- **Terms read:** 2026-10-18 — https://mastodon.social/terms-of-service
-- **Decision:** pending_review. Under review: each post belongs to its author and the server grants no licence to other apps. Social Pulse will link to and embed posts, not copy them.
-- **May show:** headline no · excerpt no · AI summary no · media no · commercial use no
-- **Attribution:** @user@mastodon.social, linked to the post
-- **Retention:** 7 days
-- **Polled:** every 15 min
-- **From the terms:** “Nothing in these terms gives us ownership of your Content. Whoever owns the Content retains ownership.”
 
 ## Excluded
 

@@ -13,7 +13,7 @@ import { recordedJob } from "@/lib/services/jobs";
 import { switchesOff } from "@/lib/services/ops";
 
 import { normalizeTitle, sameStory, significantTokens, titleSignature, urlHash } from "./normalize";
-import { ADAPTERS, syncCatalogue } from "./registry";
+import { ADAPTERS, SOCIAL_ADAPTERS, syncCatalogue } from "./registry";
 import { SourceError, type FetchFn, type IncomingItem, type SourceContext } from "./types";
 
 /**
@@ -188,8 +188,11 @@ export async function refreshStory(tx: Tx, storyId: string): Promise<void> {
       item_count = (select count(*) from items),
       source_count = (select count(distinct publisher_domain) from items),
       official_count = (select count(*) from items where is_official),
-      categories = coalesce((select array_agg(c order by n desc, c) from cats), '{}'),
-      primary_category = (select c from cats order by n desc, c limit 1),
+      -- Sections from the items when they give any. When they give none, a section the model chose stays: rebuilding
+      -- from the items alone wiped it on every new report until the AI pass happened to run again.
+      categories = coalesce((select array_agg(c order by n desc, c) from cats), case when stories.categories_by = 'ai' then stories.categories else '{}' end),
+      primary_category = coalesce((select c from cats order by n desc, c limit 1), case when stories.categories_by = 'ai' then stories.primary_category end),
+      categories_by = case when exists (select 1 from cats) then 'rules' else stories.categories_by end,
       event_countries = coalesce((select array_agg(distinct c order by c) from items, unnest(items.event_countries) as c), '{}'),
       indian_states = coalesce((select array_agg(distinct c order by c) from items, unnest(items.indian_states) as c), '{}'),
       scope = case when exists (select 1 from items where 'IN' = any(items.event_countries)) then 'india' else 'global' end,
@@ -207,6 +210,7 @@ export async function refreshStory(tx: Tx, storyId: string): Promise<void> {
     categories: string[];
     age_minutes: number;
     quiet_minutes: number;
+    social_six: number;
   }>(
     tx,
     sql`select
@@ -218,7 +222,9 @@ export async function refreshStory(tx: Tx, storyId: string): Promise<void> {
           coalesce(cardinality(max(st.event_countries)), 0)::int as countries,
           max(st.categories) as categories,
           floor(extract(epoch from now() - max(st.first_seen_at)) / 60)::int as age_minutes,
-          floor(extract(epoch from now() - max(si.associated_at)) / 60)::int as quiet_minutes
+          floor(extract(epoch from now() - max(si.associated_at)) / 60)::int as quiet_minutes,
+          (select count(*)::int from social_posts sp join sources ss on ss.id = sp.source_id
+            where sp.story_id = ${storyId}::uuid and ss.rights_status = 'cleared' and sp.posted_at > now() - interval '6 hours') as social_six
         from story_items si
         join raw_source_items r on r.id = si.item_id
         join sources s on s.id = r.source_id
@@ -237,6 +243,7 @@ export async function refreshStory(tx: Tx, storyId: string): Promise<void> {
     categories: row.categories ?? [],
     ageMinutes: row.age_minutes ?? 0,
     quietMinutes: row.quiet_minutes ?? 0,
+    socialPostsLastSixHours: row.social_six ?? 0,
   };
   const h = heat(storyFacts);
   const c = confidence(storyFacts);
@@ -308,9 +315,112 @@ async function openRun(sourceId: string, trigger: string): Promise<string> {
   return runId;
 }
 
+/** How many kept posts to re-check for deletion each run, oldest check first. */
+const RECHECK_PER_RUN = 15;
+const RECHECK_AFTER_HOURS = 6;
+
+/**
+ * Match public posts to stories: at least three significant words in common
+ * with a recent story's headline, covering at least half of the headline's.
+ * A post that matches nothing is still kept for Social Pulse's topic view; it
+ * never starts a story of its own.
+ */
+export function matchPost(postTokens: readonly string[], stories: { id: string; tokens: string[] }[]): string | null {
+  const words = new Set(postTokens);
+  let best: { id: string; shared: number } | null = null;
+  for (const story of stories) {
+    if (story.tokens.length === 0) continue;
+    const shared = story.tokens.filter((token) => words.has(token)).length;
+    if (shared >= 3 && shared / story.tokens.length >= 0.5 && (!best || shared > best.shared)) best = { id: story.id, shared };
+  }
+  return best?.id ?? null;
+}
+
+async function runSocial(source: SourceRow, runId: string, started: number, deadline: number, fetchFn: FetchFn): Promise<RunResult> {
+  const adapter = SOCIAL_ADAPTERS[source.provider]!;
+  const result: RunResult = { source: source.key, status: "ok", fetched: 0, inserted: 0, duplicates: 0, quarantined: 0, clustered: 0, error: null };
+  const outcome = await adapter.read(source, { fetch: fetchFn, deadline: deadline - 6_000 });
+  // A quiet hashtag's timeline reaches back weeks: past the source's retention a post is not stored only to be purged.
+  const oldest = Date.now() - (source.retentionDays ?? 7) * 86_400_000;
+  outcome.posts = outcome.posts.filter((post) => Date.parse(post.postedAt) >= oldest);
+  result.fetched = outcome.posts.length;
+  const recent = await withSystem("social.stories", (tx) =>
+    execRows<{ id: string; signature: string }>(tx, sql`select id, signature from stories where last_updated_at > now() - interval '48 hours' order by last_updated_at desc limit 3000`),
+  );
+  const stories = recent.map((story) => ({ id: story.id, tokens: story.signature.split(" ").filter(Boolean) }));
+  const touched = new Set<string>();
+  await withSystem("social.store", async (tx) => {
+    for (const post of outcome.posts) {
+      const storyId = matchPost(post.tokens, stories);
+      const rows = await execRows<{ inserted: boolean }>(
+        tx,
+        sql`insert into social_posts (id, source_id, platform, external_id, url, embed_url, author_handle, author_name, author_url, posted_at, tokens, hashtags,
+                                      language, replies, reposts, likes, story_id)
+            values (${uuidv7()}::uuid, ${source.id}::uuid, ${post.platform}, ${post.externalId}, ${post.url}, ${post.embedUrl}, ${post.authorHandle},
+                    ${post.authorName}, ${post.authorUrl}, ${post.postedAt}::timestamptz, ${textArray(post.tokens)}, ${textArray(post.hashtags)},
+                    ${post.language}, ${post.replies}, ${post.reposts}, ${post.likes}, ${storyId}::uuid)
+            on conflict (source_id, external_id) do update set replies = excluded.replies, reposts = excluded.reposts, likes = excluded.likes,
+                    story_id = coalesce(social_posts.story_id, excluded.story_id), checked_at = now()
+            returning (xmax = 0) as inserted`,
+      );
+      if (rows[0]?.inserted) result.inserted += 1;
+      else result.duplicates += 1;
+      if (storyId) touched.add(storyId);
+    }
+    // Older than the source's retention: gone, whether or not it still exists.
+    await tx.execute(sql`delete from social_posts where source_id = ${source.id}::uuid and posted_at < now() - make_interval(days => ${source.retentionDays ?? 7})`);
+  });
+
+  // Deletion checks: a post its author deleted, or made private, leaves the paper too.
+  const due = await withSystem("social.due", (tx) =>
+    execRows<{ id: string; externalId: string }>(
+      tx,
+      sql`select id, external_id as "externalId" from social_posts
+           where source_id = ${source.id}::uuid and checked_at < now() - make_interval(hours => ${RECHECK_AFTER_HOURS})
+           order by checked_at limit ${RECHECK_PER_RUN}`,
+    ),
+  );
+  let removed = 0;
+  for (const post of due) {
+    if (deadline - Date.now() < 3_000) break;
+    const alive = await adapter.exists(source, post.externalId, { fetch: fetchFn, deadline });
+    if (alive === null) continue;
+    await withSystem("social.check", (tx) =>
+      tx.execute(alive ? sql`update social_posts set checked_at = now() where id = ${post.id}::uuid` : sql`delete from social_posts where id = ${post.id}::uuid`),
+    );
+    if (!alive) removed += 1;
+  }
+
+  await withSystem("social.close", async (tx) => {
+    for (const storyId of touched) await refreshStory(tx, storyId);
+    await tx.execute(sql`
+      update sources set last_success_at = now(), consecutive_failures = 0, health_status = ${answeredHealth(source.sourceType, outcome.newestAt ?? null)},
+                         last_error = null, leased_until = null, next_poll_at = now() + make_interval(secs => ${source.pollIntervalSeconds}),
+                         cursor = coalesce(${outcome.cursor ? JSON.stringify(outcome.cursor) : null}::jsonb, cursor),
+                         newest_item_at = greatest(newest_item_at, ${outcome.newestAt ?? null}::timestamptz), updated_at = now()
+       where id = ${source.id}::uuid`);
+    // "quarantined" here is posts left out by the rules (not public, not discoverable, a bot...) plus posts removed as deleted.
+    await tx.execute(sql`
+      update ingestion_runs set status = 'ok', finished_at = now(), duration_ms = ${Date.now() - started}, http_status = ${outcome.httpStatus},
+                                fetched = ${result.fetched}, inserted = ${result.inserted}, duplicates = ${result.duplicates},
+                                quarantined = ${outcome.skipped + removed}, clustered = ${touched.size}
+       where id = ${runId}::uuid`);
+  });
+  result.quarantined = outcome.skipped + removed;
+  result.clustered = touched.size;
+  return result;
+}
+
 export async function runSource(source: SourceRow, trigger: string, deadline: number, fetchFn: FetchFn): Promise<RunResult> {
   const started = Date.now();
   const runId = await openRun(source.id, trigger);
+  if (SOCIAL_ADAPTERS[source.provider]) {
+    try {
+      return await runSocial(source, runId, started, deadline, fetchFn);
+    } catch (error) {
+      return failRun(source, runId, started, error);
+    }
+  }
   const adapter = ADAPTERS[source.provider];
   const result: RunResult = { source: source.key, status: "ok", fetched: 0, inserted: 0, duplicates: 0, quarantined: 0, clustered: 0, error: null };
   try {
@@ -356,27 +466,30 @@ export async function runSource(source: SourceRow, trigger: string, deadline: nu
     });
     return result;
   } catch (error) {
-    // Only our own messages are stored. Anything else is named by its kind: a stack or a body is not a log line.
-    const message = error instanceof SourceError ? error.message : `Unexpected ${error instanceof Error ? error.name : "error"}.`;
-    const throttled = error instanceof SourceError && error.throttled;
-    const failures = source.consecutiveFailures + 1;
-    result.status = "failed";
-    result.error = message;
-    await withSystem("ingest.failed", async (tx) => {
-      await tx.execute(sql`
-        update sources set consecutive_failures = ${failures}, last_error_at = now(), last_error = ${message}, leased_until = null,
-                           health_status = ${failures >= 3 ? "failing" : "degraded"},
-                           next_poll_at = now() + make_interval(secs => ${nextPollDelaySeconds(source, failures)}),
-                           circuit_open_until = ${throttled ? sql`now() + interval '1 hour'` : sql`circuit_open_until`},
-                           updated_at = now()
-         where id = ${source.id}::uuid`);
-      await tx.execute(sql`
-        update ingestion_runs set status = 'failed', finished_at = now(), duration_ms = ${Date.now() - started},
-                                  http_status = ${error instanceof SourceError ? error.httpStatus : null}, error = ${message}
-         where id = ${runId}::uuid`);
-    });
-    return result;
+    return failRun(source, runId, started, error);
   }
+}
+
+/** Record a failed run against its source: backoff, health, and the circuit when the source asked us to slow down. */
+async function failRun(source: SourceRow, runId: string, started: number, error: unknown): Promise<RunResult> {
+  // Only our own messages are stored. Anything else is named by its kind: a stack or a body is not a log line.
+  const message = error instanceof SourceError ? error.message : `Unexpected ${error instanceof Error ? error.name : "error"}.`;
+  const throttled = error instanceof SourceError && error.throttled;
+  const failures = source.consecutiveFailures + 1;
+  await withSystem("ingest.failed", async (tx) => {
+    await tx.execute(sql`
+      update sources set consecutive_failures = ${failures}, last_error_at = now(), last_error = ${message}, leased_until = null,
+                         health_status = ${failures >= 3 ? "failing" : "degraded"},
+                         next_poll_at = now() + make_interval(secs => ${nextPollDelaySeconds(source, failures)}),
+                         circuit_open_until = ${throttled ? sql`now() + interval '1 hour'` : sql`circuit_open_until`},
+                         updated_at = now()
+       where id = ${source.id}::uuid`);
+    await tx.execute(sql`
+      update ingestion_runs set status = 'failed', finished_at = now(), duration_ms = ${Date.now() - started},
+                                http_status = ${error instanceof SourceError ? error.httpStatus : null}, error = ${message}
+       where id = ${runId}::uuid`);
+  });
+  return { source: source.key, status: "failed", fetched: 0, inserted: 0, duplicates: 0, quarantined: 0, clustered: 0, error: message };
 }
 
 /* ------------------------------------------------------------------- tick */

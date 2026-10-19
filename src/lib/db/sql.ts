@@ -34,6 +34,19 @@ export function showableSource(): SQL {
 }
 
 /**
+ * Whether a social post may be shown, through its platform's own embed, on a
+ * query that joined `sources src`. Narrower than showableSource in one way --
+ * the post's source must still be cleared and switched on -- and different in
+ * another: no headline display is involved, because the post is never shown
+ * as our text, only embedded and linked.
+ */
+export function showableSocial(alias: "src" | "ps" = "src"): SQL {
+  // `ps` when the same query also joins a story's headline source as `src`.
+  const table = sql.raw(alias);
+  return sql`(${table}.rights_status = 'cleared' and ${table}.enabled)`;
+}
+
+/**
  * A JavaScript array as ONE Postgres array parameter.
  *
  * Drizzle's sql template expands an array into a parenthesised list -- `(a,

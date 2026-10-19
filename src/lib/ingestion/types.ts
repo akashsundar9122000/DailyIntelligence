@@ -78,3 +78,42 @@ export class SourceError extends Error {
     this.name = "SourceError";
   }
 }
+
+/**
+ * A public post as a social adapter hands it over. No text field, by design:
+ * the post is shown only through its platform's embed, and what is kept is
+ * what matching it to a story needs (see social_posts in the schema).
+ */
+export type IncomingPost = {
+  platform: "mastodon" | "bluesky" | "youtube";
+  externalId: string;
+  url: string;
+  embedUrl: string;
+  authorHandle: string;
+  authorName: string | null;
+  authorUrl: string | null;
+  postedAt: string;
+  tokens: string[];
+  hashtags: string[];
+  language: string | null;
+  replies: number;
+  reposts: number;
+  likes: number;
+};
+
+export type SocialOutcome = {
+  status: "ok";
+  httpStatus: number;
+  posts: IncomingPost[];
+  /** Posts read and left out by the rules (not public, not discoverable, a bot, a reblog...), counted, never kept. */
+  skipped: number;
+  cursor?: Record<string, unknown>;
+  newestAt?: string | null;
+};
+
+export interface SocialAdapter {
+  provider: Provider;
+  read(source: SourceContext, options: { fetch: FetchFn; deadline: number }): Promise<SocialOutcome>;
+  /** Whether a kept post still exists. Null when the platform could not say (a timeout), which is not "deleted". */
+  exists(source: SourceContext, externalId: string, options: { fetch: FetchFn; deadline: number }): Promise<boolean | null>;
+}

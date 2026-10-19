@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { dryRun, setOpsSwitch, setSourceEnabled, testSendToSelf } from "@/lib/services/admin";
+import { dryRun, mergeStories, resolveReport, setOpsSwitch, setSourceEnabled, splitItem, testSendToSelf } from "@/lib/services/admin";
 import { SWITCHES, type SwitchKey } from "@/lib/services/ops";
 
 import { signedInAction } from "./_define";
@@ -34,3 +34,26 @@ export const setOpsSwitchAction = signedInAction(
 export const dryRunAction = signedInAction(z.object({ sourceId: z.uuid() }), (input, { session }) => dryRun(session, input.sourceId));
 
 export const testSendAction = signedInAction(z.object({}), (_input, { session }) => testSendToSelf(session));
+
+export const resolveReportAction = signedInAction(
+  z.object({ reportId: z.uuid(), status: z.enum(["actioned", "dismissed"]), resolution: z.string().max(500).default("") }),
+  async (input, { session }) => {
+    await resolveReport(session, input);
+    revalidatePath("/app/admin");
+    return { reportId: input.reportId, status: input.status };
+  },
+);
+
+/** Merge one story into another. Confirmed in the page; checked again here. */
+export const mergeStoriesAction = signedInAction(z.object({ keepId: z.uuid(), mergeId: z.uuid() }), async (input, { session }) => {
+  const result = await mergeStories(session, input);
+  revalidatePath("/app/admin");
+  revalidatePath(`/app/story/${input.keepId}`);
+  return result;
+});
+
+export const splitItemAction = signedInAction(z.object({ storyId: z.uuid(), itemId: z.uuid() }), async (input, { session }) => {
+  const result = await splitItem(session, input);
+  revalidatePath(`/app/story/${input.storyId}`);
+  return result;
+});

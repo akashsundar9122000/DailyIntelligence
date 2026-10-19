@@ -9,6 +9,8 @@
  *   story_scores       heat, confidence and importance, with their components
  *   ingestion_runs     one row per fetch of one source, success or not
  *   ai_briefings       every model output, accepted or rejected, with what it was given
+ *   social_posts       public posts that may be embedded and linked, matched to stories
+ *   story_embeddings   a vector per story headline, for search by meaning
  *
  * All are REFERENCE tables (see ../classification.ts): any reader may SELECT,
  * only the system writes. What a reader may actually SEE is narrower than what
@@ -20,6 +22,7 @@ import {
   boolean,
   check,
   customType,
+  halfvec,
   index,
   integer,
   jsonb,
@@ -441,4 +444,83 @@ export const aiBriefings = pgTable(
     check("ai_briefings_status_vocab", inVocab("status", BRIEFING_STATUSES)),
     check("ai_briefings_subject", sql`("kind" = 'story_explainer' AND "story_id" IS NOT NULL) OR ("kind" = 'edition_briefing' AND "edition_key" IS NOT NULL)`),
   ],
+);
+
+/* --------------------------------------------------------------- social posts */
+
+export const SOCIAL_PLATFORMS = ["mastodon", "bluesky", "youtube"] as const;
+export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
+
+/**
+ * A public post from a platform whose terms permit embedding and linking.
+ *
+ * WHAT IS NOT HERE: the post's text. Authors keep their copyright and no
+ * platform licenses it to other apps, so a post is shown only through the
+ * platform's own embed, which the platform renders, and a link. What is kept
+ * is what matching needs: the post's significant words and hashtags, to attach
+ * it to a story. A post never creates or corroborates a story; it is
+ * conversation about one, and engagement is never evidence.
+ *
+ * Kept seven days (the source's retention), and dropped as soon as a check
+ * finds it deleted.
+ */
+export const socialPosts = pgTable(
+  "social_posts",
+  {
+    id: primaryId(),
+    sourceId: uuid("source_id")
+      .notNull()
+      .references(() => sources.id, { onDelete: "cascade" }),
+    platform: text("platform").$type<SocialPlatform>().notNull(),
+    externalId: text("external_id").notNull(),
+    url: text("url").notNull(),
+    /** The platform's own embed address for this post. */
+    embedUrl: text("embed_url").notNull(),
+    authorHandle: text("author_handle").notNull(),
+    authorName: text("author_name"),
+    authorUrl: text("author_url"),
+    postedAt: namedTimestamp("posted_at"),
+    /** Significant words, for matching to a story. Not the text, and not enough to rebuild it. */
+    tokens: text("tokens").array().notNull().default(sql`'{}'::text[]`),
+    hashtags: text("hashtags").array().notNull().default(sql`'{}'::text[]`),
+    language: text("language"),
+    replies: integer("replies").notNull().default(0),
+    reposts: integer("reposts").notNull().default(0),
+    likes: integer("likes").notNull().default(0),
+    storyId: uuid("story_id").references(() => stories.id, { onDelete: "set null" }),
+    ingestedAt: namedTimestamp("ingested_at"),
+    /** The last time the post was confirmed still to exist. */
+    checkedAt: namedTimestamp("checked_at"),
+  },
+  (t) => [
+    uniqueIndex("social_posts_source_external").on(t.sourceId, t.externalId),
+    index("social_posts_story").on(t.storyId, t.postedAt.desc()),
+    index("social_posts_recent").on(t.postedAt.desc()),
+    check("social_posts_platform_vocab", inVocab("platform", SOCIAL_PLATFORMS)),
+  ],
+);
+
+/* ----------------------------------------------------------- story embeddings */
+
+/** The embedding model's width. nvidia/nemotron-3-embed-1b answers in 2048 and nothing else (measured 19 October 2026). */
+export const EMBEDDING_DIMENSIONS = 2048;
+
+/**
+ * A vector per story, from its headline, for "search by meaning". Half
+ * precision: pgvector indexes `vector` up to 2000 dimensions and `halfvec` up
+ * to 4000, and the model answers in 2048. `text_hash` is what was embedded, so
+ * a story whose headline changed is embedded again.
+ */
+export const storyEmbeddings = pgTable(
+  "story_embeddings",
+  {
+    storyId: uuid("story_id")
+      .primaryKey()
+      .references(() => stories.id, { onDelete: "cascade" }),
+    model: text("model").notNull(),
+    textHash: text("text_hash").notNull(),
+    embedding: halfvec("embedding", { dimensions: EMBEDDING_DIMENSIONS }).notNull(),
+    embeddedAt: namedTimestamp("embedded_at"),
+  },
+  (t) => [index("story_embeddings_hnsw").using("hnsw", t.embedding.op("halfvec_cosine_ops"))],
 );

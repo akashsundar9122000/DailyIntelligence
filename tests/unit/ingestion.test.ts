@@ -269,3 +269,14 @@ describe("pacing requests to one host", () => {
     expect(at["pace-b.example"]![0]! - at["pace-a.example"]![0]!).toBeLessThan(500);
   });
 });
+
+describe("the Mastodon adapter", () => {
+  it("leaves a post's links out of its words, and keeps its hashtags", async () => {
+    const { postWords } = await import("@/lib/ingestion/adapters/mastodon");
+    const html = `<p>Shots fired at a film star's car in Mumbai <a href="https://dlvr.it/l40jham4?utm_source=x" rel="nofollow"><span class="invisible">https://</span>dlvr.it/l40jham4</a> <a href="https://mastodon.social/tags/bollywood" class="mention hashtag" rel="tag">#<span>bollywood</span></a></p>`;
+    const words = postWords(html);
+    // Plurals fold, as they do for headlines: "shots" is "shot".
+    expect(words).toEqual(expect.arrayContaining(["shot", "fired", "mumbai", "bollywood"]));
+    expect(words.join(" ")).not.toMatch(/dlvr|l40jham4|utm|https/);
+  });
+});

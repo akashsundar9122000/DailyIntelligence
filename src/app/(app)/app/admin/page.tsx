@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { getSession } from "@/lib/auth/session";
 import { formatInstant, relativeTime } from "@/lib/format/date";
-import { adminNotifications, adminOverview, isAdmin } from "@/lib/services/admin";
+import { adminAi, adminNotifications, adminOverview, isAdmin, openReports, possibleDuplicates } from "@/lib/services/admin";
 import { listSwitches } from "@/lib/services/ops";
 
-import { DryRunButton, OpsSwitch, TestSend } from "./ops-controls";
+import { DryRunButton, MergeButton, OpsSwitch, ResolveReport, TestSend } from "./ops-controls";
 import { SourceSwitch } from "./source-switch";
 
 export const metadata: Metadata = { title: "Administration" };
@@ -27,7 +27,7 @@ export default async function AdminPage() {
   if (!(await isAdmin(session))) notFound();
   const now = new Date();
   const { sources, runs, jobs, counts } = await adminOverview(session);
-  const [notifications, switches] = await Promise.all([adminNotifications(session), listSwitches()]);
+  const [notifications, switches, reports, duplicates, ai] = await Promise.all([adminNotifications(session), listSwitches(), openReports(session), possibleDuplicates(session), adminAi(session)]);
   const lastTick = jobs.find((job) => job.job === "tick");
   const attention = sources.filter((source) => source.enabled && (source.health !== "healthy" || source.circuitOpenUntil));
   const failedRuns = runs.filter((run) => run.status === "failed" || run.status === "partial");
@@ -113,6 +113,70 @@ export default async function AdminPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section aria-labelledby="reports-heading" className="space-y-3">
+        <SectionHead id="reports-heading" kicker="Oldest first" title={`Readers' reports (${reports.length})`} />
+        {reports.length ? (
+          <ul className="divide-y divide-border border-y border-border">
+            {reports.map((report) => (
+              <li key={report.id} className="space-y-2 py-3">
+                <p className="text-sm">
+                  <Badge tone="warning">{report.reason.replace("_", " ")}</Badge>{" "}
+                  {report.storyId ? (
+                    <a href={`/app/story/${report.storyId}`} className="font-semibold underline-offset-4 hover:underline">
+                      {report.headline}
+                    </a>
+                  ) : (
+                    <span className="text-text-tertiary">a story since removed</span>
+                  )}{" "}
+                  <span className="text-xs text-text-tertiary">· {relativeTime(report.createdAt, now)}</span>
+                </p>
+                {report.detail ? <p className="text-sm text-text-secondary">&ldquo;{report.detail}&rdquo;</p> : null}
+                <ResolveReport reportId={report.id} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-text-secondary">No open reports.</p>
+        )}
+      </section>
+
+      <section aria-labelledby="duplicates-heading" className="space-y-3">
+        <SectionHead id="duplicates-heading" kicker="Close in meaning, last two days" title="Possible duplicate stories" />
+        {duplicates.length ? (
+          <ul className="divide-y divide-border border-y border-border">
+            {duplicates.map((pair) => (
+              <li key={`${pair.keepId}-${pair.mergeId}`} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+                <div className="min-w-0 space-y-1">
+                  <p>
+                    <span className="text-xs text-text-tertiary">Keep ({pair.keepSources} publishers): </span>
+                    <a href={`/app/story/${pair.keepId}`} className="font-semibold hover:underline">
+                      {pair.keepHeadline}
+                    </a>
+                  </p>
+                  <p>
+                    <span className="text-xs text-text-tertiary">Merge ({pair.mergeSources}): </span>
+                    <a href={`/app/story/${pair.mergeId}`} className="hover:underline">
+                      {pair.mergeHeadline}
+                    </a>
+                    <span className="text-xs text-text-tertiary"> · distance {pair.distance}</span>
+                  </p>
+                </div>
+                <MergeButton keepId={pair.keepId} mergeId={pair.mergeId} keepHeadline={pair.keepHeadline} mergeHeadline={pair.mergeHeadline} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-text-secondary">No pair of recent stories is close enough in meaning to suggest.</p>
+        )}
+      </section>
+
+      <section aria-labelledby="ai-heading" className="space-y-2">
+        <SectionHead id="ai-heading" kicker="The last day, in counts" title="The AI pass" />
+        <p className="text-sm text-text-secondary">
+          {ai.byStatus.length ? ai.byStatus.map((row) => `${row.count} ${row.status}`).join(", ") : "No model output in the last day"}; {ai.tokens.toLocaleString("en-IN")} tokens; {ai.embedded} headlines embedded for search by meaning.
+        </p>
       </section>
 
       <section aria-labelledby="notifications-heading" className="space-y-3">

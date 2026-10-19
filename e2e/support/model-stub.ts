@@ -71,14 +71,41 @@ function reply(messages: Message[]): string {
   return "I was not asked for anything I recognise.";
 }
 
+/*
+ * Embeddings: a bag of words in 2048 slots, normalised, with a handful of
+ * fixed synonyms so a test can search by meaning with no word in common with
+ * the headline ("rain arrives early in the south" -> the monsoon story).
+ * Nothing like a real model, and not meant to be: it makes "close in meaning"
+ * a property the suite can assert.
+ */
+const SYNONYMS: Record<string, string> = { rain: "monsoon", rains: "monsoon", arrives: "reaches", south: "southern", early: "early" };
+function embed(text: string): number[] {
+  const vector = new Array<number>(2048).fill(0);
+  for (const raw of text.toLowerCase().match(/[a-z]+/g) ?? []) {
+    if (raw.length < 4) continue;
+    const word = SYNONYMS[raw] ?? raw;
+    let hash = 0;
+    for (const char of word) hash = (hash * 31 + char.charCodeAt(0)) % 2048;
+    vector[hash]! += 1;
+  }
+  const length = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0)) || 1;
+  return vector.map((value) => value / length);
+}
+
 export async function startModelStub(): Promise<() => Promise<void>> {
   const server: Server = createServer((request, response) => {
     let body = "";
     request.on("data", (chunk: Buffer) => (body += chunk.toString("utf8")));
     request.on("end", () => {
       // A request with no key is the product forgetting to send one.
-      if (!request.headers.authorization?.startsWith("Bearer ") || request.url !== "/v1/chat/completions") {
+      if (!request.headers.authorization?.startsWith("Bearer ") || (request.url !== "/v1/chat/completions" && request.url !== "/v1/embeddings")) {
         response.writeHead(request.headers.authorization ? 404 : 401).end();
+        return;
+      }
+      if (request.url === "/v1/embeddings") {
+        const { input } = JSON.parse(body) as { input: string[] };
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ data: input.map((text, index) => ({ index, embedding: embed(text) })) }));
         return;
       }
       const parsed = JSON.parse(body) as { messages: Message[] };

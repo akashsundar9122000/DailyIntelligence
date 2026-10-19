@@ -92,6 +92,10 @@ e2e/                  Playwright: tests/ (desktop, Pixel 7, reduced motion, axe)
   over, never "delivered".
 - **A missing `ops_switches` row is ON.** Switches stop things; a forgotten row
   must never be what stops the paper.
+- **A social post is never our text.** `social_posts` has no text column: a
+  post is shown only through its platform's own embed (`showableSocial()`),
+  matched to a story by its words, and feeds heat, never confidence. A platform
+  is connected only after its terms are read and quoted in the catalogue.
 - **Heat is not confidence.** Two scores, stored with their components and a
   version, shown side by side. Nothing may combine them into one number.
 - **Newsprint: one spot colour.** Press red means breaking, live or wrong, and

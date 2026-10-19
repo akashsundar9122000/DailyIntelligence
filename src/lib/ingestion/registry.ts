@@ -8,9 +8,11 @@ import { textArray } from "@/lib/db/sql";
 import type { Provider } from "@/lib/db/schema/news";
 import { SOURCE_CATALOGUE, type SourceDefinition } from "@/lib/sources/catalogue";
 
+import { blueskyAdapter } from "./adapters/bluesky";
 import { gdeltGkgAdapter } from "./adapters/gdelt-gkg";
+import { mastodonAdapter } from "./adapters/mastodon";
 import { rssAdapter } from "./adapters/rss";
-import type { SourceAdapter } from "./types";
+import type { SocialAdapter, SourceAdapter } from "./types";
 
 /** The adapters that exist. A cleared source whose provider has none yet stays off, with that reason. */
 export const ADAPTERS: Partial<Record<Provider, SourceAdapter>> = {
@@ -18,12 +20,18 @@ export const ADAPTERS: Partial<Record<Provider, SourceAdapter>> = {
   rss: rssAdapter,
 };
 
+/** Adapters for public posts: they feed Social Pulse and a story's conversation, never the stories themselves. */
+export const SOCIAL_ADAPTERS: Partial<Record<Provider, SocialAdapter>> = {
+  mastodon: mastodonAdapter,
+  bluesky: blueskyAdapter,
+};
+
 /** The prefix an administrator's own "switched off" carries. The catalogue never switches such a source back on. */
 export const ADMIN_DISABLED = "admin:";
 
 function wanted(source: SourceDefinition): { enabled: boolean; reason: string | null } {
   if (source.rights.status !== "cleared") return { enabled: false, reason: `rights: ${source.rights.status.replace("_", " ")}` };
-  if (!ADAPTERS[source.provider]) return { enabled: false, reason: "no adapter for this provider yet" };
+  if (!ADAPTERS[source.provider] && !SOCIAL_ADAPTERS[source.provider]) return { enabled: false, reason: "no adapter for this provider yet" };
   return { enabled: true, reason: null };
 }
 

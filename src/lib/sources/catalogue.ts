@@ -358,12 +358,15 @@ export const SOURCE_CATALOGUE: SourceDefinition[] = [
       aiSummary: false,
       media: false,
       attribution: "@handle on Bluesky, linked to the post",
-      note: "Under review: authors keep their copyright and Bluesky's licence does not extend to other apps. Social Pulse will link to and embed posts through Bluesky's own embed, not copy them.",
+      note: "Not yet: Bluesky's developer guidelines require a public, regularly monitored contact email for any app that reads its network, and this deployment has not published one. The connector is built and tested; it switches on once that address is set. Posts would be shown only through Bluesky's own embed and linked.",
       operativeQuote: "You retain ownership of your Content ... By sharing Content on Bluesky, you grant us a limited, worldwide, non-exclusive, royalty-free license",
       retentionDays: 7,
     },
     pollIntervalSeconds: 900,
     priority: 70,
+    // Official bodies and newsrooms only: Social Pulse is context, and these are accounts whose posts are about the news.
+    // Each handle checked to exist on 19 October 2026; nasa.gov, un.org and isro.gov.in did not.
+    config: { accounts: ["who.int", "reuters.com", "apnews.com", "npr.org"] },
   },
   {
     key: "mastodon-social",
@@ -379,21 +382,24 @@ export const SOURCE_CATALOGUE: SourceDefinition[] = [
     isOfficial: false,
     contentType: "social_post",
     rights: {
-      status: "pending_review",
+      status: "cleared",
       termsUrl: "https://mastodon.social/terms-of-service",
-      checkedOn: CHECKED,
+      checkedOn: "2026-10-19",
       commercialUse: false,
       headline: false,
       excerpt: false,
       aiSummary: false,
       media: false,
-      attribution: "@user@mastodon.social, linked to the post",
-      note: "Under review: each post belongs to its author and the server grants no licence to other apps. Social Pulse will link to and embed posts, not copy them.",
-      operativeQuote: "Nothing in these terms gives us ownership of your Content. Whoever owns the Content retains ownership.",
+      attribution: "@user@mastodon.social, through mastodon.social's own embed, linked to the post",
+      note: "Public posts from accounts that opted into discovery, shown only through mastodon.social's own embed and linked to the original. We keep matching keywords, never the post's text; a deleted post is dropped at the next check, and nothing is kept past seven days. Posts are conversation about a story, never evidence for it.",
+      operativeQuote:
+        "Whoever owns the Content retains ownership. ... When you upload Content to the Service, you are making it available via the Internet. Anyone, or any computer, might access your Content via RSS aggregators and readers, embed your Content in web pages and other media, or index and store your Content in search engines and databases.",
       retentionDays: 7,
     },
     pollIntervalSeconds: 900,
     priority: 75,
+    // Hashtags read each run: the paper's sections, in the words people tag posts with.
+    config: { hashtags: ["india", "cricket", "climate", "science", "ai", "technology", "worldnews", "bollywood", "football", "space"] },
   },
 
   /* ------------------------------------------------------------ excluded */

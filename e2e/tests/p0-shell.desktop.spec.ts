@@ -65,12 +65,13 @@ test.describe("the signed-in shell, on a wide screen", () => {
     await expect(page).toHaveURL(/\/app\/saved$/);
   });
 
-  test("every section still in preparation says so, and shows no stories", async ({ page }) => {
-    // Every route still listed in config/sections.ts, so the next section to be built drops out of this test by itself.
-    for (const href of Object.keys(SECTION_PLANS)) {
-      await page.goto(href);
-      await expect(page.getByText("In preparation")).toBeVisible();
-      await expect(page.getByText("Nothing here is sample news.")).toBeVisible();
+  test("no destination in the paper is a placeholder: every one renders its own page", async ({ page }) => {
+    // Every section is built. A section listed in config/sections.ts would show "In preparation"; none may.
+    expect(Object.keys(SECTION_PLANS)).toEqual([]);
+    for (const item of NAV_ITEMS) {
+      const response = await page.goto(item.href);
+      expect(response?.status(), item.href).toBe(200);
+      await expect(page.getByText("In preparation")).toHaveCount(0);
     }
   });
 });

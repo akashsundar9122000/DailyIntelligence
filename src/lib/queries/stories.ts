@@ -325,3 +325,22 @@ export async function newStoriesSince(since: string, scope?: "india" | "global")
     throw error;
   }
 }
+
+/**
+ * Stories closest in meaning to a query's vector, from the last month, by
+ * cosine distance over the headline embeddings. `maxDistance` keeps the tail
+ * out: past it, "closest" is only "least far", and a list of unrelated stories
+ * labelled as matches would be worse than none.
+ *
+ * 0.70, measured on 19 October 2026 with nvidia/nemotron-3-embed-1b on real
+ * headlines: matches sat at 0.43-0.62 ("papal health" to the Pope's surgery
+ * stories at 0.61), unrelated stories from 0.74 up. Re-measure on a model change.
+ */
+export async function storiesByMeaning(vector: string, filter: StoryFilter = {}, limit = 10, maxDistance = 0.7): Promise<StoryCard[]> {
+  return read(
+    sql`select ${CARD_COLUMNS} ${FROM} join story_embeddings se on se.story_id = st.id
+         where ${where({ withinHours: 24 * 30, ...filter })} and (se.embedding <=> ${vector}::halfvec) < ${maxDistance}
+         order by se.embedding <=> ${vector}::halfvec
+         limit ${limit}`,
+  );
+}

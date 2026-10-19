@@ -42,6 +42,8 @@ export const TABLE_CLASSES = {
   push_subscriptions: "owner",
   notification_events: "owner",
   ops_switches: "reference",
+  social_posts: "reference",
+  story_embeddings: "reference",
   ingestion_runs: "reference",
   rate_limits: "system",
   email_outbox: "system",

@@ -10,8 +10,8 @@ The plan is `docs/plan.md`; the scope is `docs/BLUEPRINT.md`.
 | 0 | Repository, newspaper identity, shell, sign-in, database security, the gate, first deploy | Done, deployed |
 | 1 | Sources, ingestion, clustering, scores, the editions, story page, search, saved, onboarding, settings, admin | Done, deployed, verified in production |
 | 2 | AI explainers with citations, AI category tagging, briefings, ask about a story, eval set | Done, deployed, verified in production |
-| 3 | Live updates, web push, notification policy, digests, resilience | Done (see below for the deploy check) |
-| 4 | Social Pulse, dashboards, admin cluster tools and moderation, semantic search | Not started |
+| 3 | Live updates, web push, notification policy, digests, resilience | Done, deployed, verified in production |
+| 4 | Social Pulse, dashboards, admin cluster tools and moderation, semantic search | Done (see below for the deploy check) |
 | 5 | Visual explainers, AI cost caps, editorial review, retention purge, hardening, final docs | Not started |
 
 ## Phase 0
@@ -179,6 +179,11 @@ Verified locally:
   link was followed; a device answering 410 was revoked.
 - Screenshots of the Notifications tab read in both themes at 1440px and 390px.
 
+Verified in production (commit `6dbbc1b`): the smoke suite passed 24 of 24;
+the tick workflow ran all three steps (tick, AI pass, notification pass) and
+the notification pass recorded its run with 0 readers opted in, which is the
+truth on a new deployment.
+
 Known limitations:
 
 - Push cannot be exercised against a real browser push service in the suite;
@@ -186,3 +191,57 @@ Known limitations:
   showed it.
 - iPhones receive web push only from a site added to the home screen; the page
   says so.
+
+## Phase 4
+
+Built:
+
+- **Social Pulse** (`/app/social`): mastodon.social, cleared on 19 October 2026
+  after reading its terms -- public posts from local accounts that opted into
+  discovery and indexing, no bots, reblogs or content warnings, shown only
+  through mastodon.social's own embed and linked. The post's text is never
+  stored: only its significant words (links removed) and hashtags, to match it
+  to a story. Deleted posts are dropped at the next check; nothing is kept past
+  seven days. Conversation around stories ("accelerating" only against the
+  story's own baseline), topics by hashtag, and each story's own "Public
+  conversation". Matched posts feed heat's engagement component (score version
+  `rules-2026-10-19`), never confidence.
+- **Bluesky** is built and tested but not switched on: its developer guidelines
+  require a public, monitored contact email, which is the owner's decision.
+  **YouTube** is not connected: its terms forbid automated access without the
+  official API, and no API key exists.
+- **Search by meaning**: headlines embedded with `nvidia/nemotron-3-embed-1b`
+  (2048 dimensions, stored as pgvector `halfvec` with an HNSW index); Explore
+  shows "Close in meaning" beside the word search, labelled. The cut-off (0.70
+  cosine distance) was measured on real headlines.
+- **Dashboards**: Today's "The day in numbers" (counts, India and the world,
+  sections through the day as an accessible table), "Your sections" on For You,
+  and the reader's own reading on Saved.
+- **The newsroom** (press room): readers' reports resolved with a note,
+  possible duplicate stories suggested by meaning and merged with readers'
+  saves following, a report moved out of a story it was wrongly attached to,
+  and the AI pass in counts. Every action audited.
+- **Fixed on the way**: a refresh of a story wiped a section the model had
+  chosen; social sources no longer count toward "sources reporting".
+
+Verified locally:
+
+- `pnpm verify` passed: 202 unit, 36 component, 144 integration and 302
+  end-to-end tests.
+- A live tick read 400 posts from mastodon.social, kept 65, left out 335 by the
+  rules, and matched the right post to the right story.
+- Real searches by meaning: "papal health" found the Pope's surgery stories,
+  which share none of its words; "military deaths in Canada" found four
+  headlines about the Alberta base fire.
+- Screenshots of Social Pulse and Today read in both themes; the day's numbers
+  were moved above the long list after looking, and the heatmap given a
+  logarithmic shade after one section flattened the rest.
+
+Known limitations:
+
+- Clustering still splits some events (the Alberta fire was four stories); the
+  duplicate suggestions in the press room are where a person merges them.
+- On weekdays arXiv's preprints are most of the day's story count.
+- A cadence editor was not built: the catalogue sets every source's cadence on
+  each tick, so an edit made in the press room would silently revert. Cadence
+  stays a reviewed change to `src/lib/sources/catalogue.ts`.

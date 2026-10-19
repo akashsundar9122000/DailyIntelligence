@@ -261,7 +261,10 @@ describe("health and switches", () => {
     await ownerQuery("insert into ops_switches (key, enabled, reason) values ('provider:rss', false, 'test') on conflict (key) do update set enabled = false");
     try {
       const { detail } = await runTick({ trigger: "test", budgetMs: 20_000, fetchFn: fakeInternet().fetchFn });
-      expect(detail.sources.map((run) => run.source)).toEqual(["gdelt-gkg"]);
+      const ran = detail.sources.map((run) => run.source);
+      const rssKeys = SOURCE_CATALOGUE.filter((source) => source.provider === "rss").map((source) => source.key);
+      expect(ran).toContain("gdelt-gkg");
+      expect(ran.filter((key) => rssKeys.includes(key))).toEqual([]);
     } finally {
       await ownerQuery("delete from ops_switches");
     }

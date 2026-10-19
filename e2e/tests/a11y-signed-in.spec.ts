@@ -13,6 +13,7 @@ const ROUTES = [
   "/app/global",
   "/app/categories",
   "/app/categories/climate",
+  "/app/social",
   "/app/search?q=monsoon",
   "/app/saved",
   "/app/onboarding",

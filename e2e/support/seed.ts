@@ -121,6 +121,28 @@ export async function seedEdition(ownerUrl: string): Promise<void> {
         [storyId, story.heat, story.confidence, story.importance],
       );
     }
+
+    // Social Pulse: one connected platform with three posts about the cricket final, and one that is not connected, with its reason.
+    const mastodon = (
+      await client.query<{ id: string }>(
+        `insert into sources (id, key, name, canonical_domain, source_type, provider, feed_url, country_or_region, rights_status, headline_display_allowed, enabled, rights_note)
+         values (gen_random_uuid(), 'e2e-mastodon', 'mastodon.social', 'mastodon.social', 'social', 'mastodon', 'https://fixtures.invalid/api/v1/timelines/tag/', 'global', 'cleared', false, true, 'Public posts, embedded and linked.')
+         returning id`,
+      )
+    ).rows[0]!.id;
+    await client.query(
+      `insert into sources (id, key, name, canonical_domain, source_type, provider, feed_url, country_or_region, rights_status, headline_display_allowed, enabled, rights_note)
+       values (gen_random_uuid(), 'e2e-bluesky', 'Bluesky', 'bsky.app', 'social', 'bluesky', 'https://fixtures.invalid/xrpc', 'global', 'pending_review', false, false,
+               'Not yet: needs a public contact address.')`,
+    );
+    const final = (await client.query<{ id: string }>("select id from stories where headline = $1", [SEED_STORIES.find((story) => story.key === "final")!.headline])).rows[0]!.id;
+    for (const n of [1, 2, 3]) {
+      await client.query(
+        `insert into social_posts (id, source_id, platform, external_id, url, embed_url, author_handle, author_name, posted_at, tokens, hashtags, replies, reposts, likes, story_id)
+         values (gen_random_uuid(), $1, 'mastodon', $2, $3, $4, $5, 'A Cricket Fan', now() - make_interval(mins => $6), '{cricket,final,ball}', '{cricket}', 1, 2, 3, $7)`,
+        [mastodon, `e2e-${n}`, `https://fixtures.invalid/@fan${n}/${n}`, `https://fixtures.invalid/@fan${n}/${n}/embed`, `@fan${n}@mastodon.social`, n * 10, final],
+      );
+    }
   } finally {
     await client.end();
   }

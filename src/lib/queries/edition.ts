@@ -21,6 +21,9 @@ export type EditionStatus = {
  * What the edition strip says about freshness. Taken from the sources' own
  * records, never from the clock: "Updated 3:42 pm" means a source answered at
  * 3:42, not that the page was drawn then (blueprint §6.4).
+ *
+ * News sources only: a social platform answering is not the paper being
+ * updated, and posts never make a story.
  */
 export const getEditionStatus = cache(async (): Promise<EditionStatus> => {
   try {
@@ -30,7 +33,7 @@ export const getEditionStatus = cache(async (): Promise<EditionStatus> => {
         sql`select ${isoInstant(sql`max(last_success_at)`)} as updated,
                    count(*)::int as sources,
                    count(*) filter (where health_status = 'healthy')::int as healthy
-              from sources where enabled`,
+              from sources where enabled and source_type not in ('social', 'video')`,
       ),
     );
     const row = rows[0];

@@ -7,6 +7,7 @@ import { BriefingColumn, HotColumn } from "@/components/news/sidebar";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { NewStories } from "@/components/news/new-stories";
+import { InterestStrip } from "@/components/news/dashboards";
 import { CATEGORIES, isCategorySlug } from "@/config/categories";
 import { SCOPE_LABELS } from "@/config/regions";
 import { requireSession } from "@/lib/auth/session";
@@ -16,6 +17,7 @@ import { getPreferences } from "@/lib/queries/preferences";
 import { candidateStories, hotStories } from "@/lib/queries/stories";
 import { rankForReader } from "@/lib/ranking/relevance";
 import { getReaderProfile, listInterests, readerContext, savedStoryIds } from "@/lib/services/reader";
+import { interestActivity } from "@/lib/queries/dashboards";
 
 export const metadata: Metadata = { title: "For You" };
 
@@ -28,6 +30,7 @@ export const metadata: Metadata = { title: "For You" };
  */
 export default async function ForYouPage({ searchParams }: { searchParams: Promise<{ c?: string }> }) {
   const session = await requireSession();
+  const activity = await interestActivity(session.user.id);
   const userId = session.user.id;
   const now = new Date();
   const { c } = await searchParams;
@@ -101,6 +104,7 @@ export default async function ForYouPage({ searchParams }: { searchParams: Promi
           <FrontLayout placed={placed} now={now} saved={saved} label="Your stories" />
           <aside className="space-y-8 xl:border-l xl:border-border-strong xl:pl-8" aria-label="Alongside your edition">
             <BriefingColumn entries={placed.slice(0, 5).map(({ story, reason }) => ({ story, reason }))} />
+            <InterestStrip activity={activity} />
             <HotColumn stories={showingSamples ? samples.filter((story) => story.heat >= 60) : hot} now={now} />
           </aside>
         </div>

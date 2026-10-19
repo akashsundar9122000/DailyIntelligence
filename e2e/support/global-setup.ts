@@ -28,7 +28,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   const client = new pg.Client({ connectionString: ownerUrl });
   await client.connect();
   try {
-    await client.query("truncate auth_rate_limits, rate_limits");
+    await client.query("truncate auth_rate_limits, rate_limits, ops_switches");
     // The integration tier leaves its own sources and stories in this same
     // database. The suite starts from "no source has been read".
     await client.query("truncate sources, raw_source_items, stories, story_items, story_updates, story_scores, ingestion_runs cascade");

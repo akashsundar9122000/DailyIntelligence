@@ -7,12 +7,5 @@
  */
 export type SectionPlan = { phase: number; willHold: string[] };
 
-export const SECTION_PLANS: Record<string, SectionPlan> = {
-  "/app/social": {
-    phase: 4,
-    willHold: [
-      "Public posts from platforms that permit it (Bluesky and selected Mastodon servers), each linked to the original.",
-      "Every post labelled as a post, an official statement, a video or commentary. Engagement is never treated as evidence.",
-    ],
-  },
-};
+/* Every section of the paper is built (phase 4). The mechanism stays for the next section added before it is ready. */
+export const SECTION_PLANS: Record<string, SectionPlan> = {};

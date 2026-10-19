@@ -4,7 +4,7 @@ const HEAT_PARTS: Record<string, string> = {
   velocity: "New reports this hour against its own recent pace",
   spread: "Independent publishers in the last six hours",
   recency: "How recently it last moved",
-  engagement: "Public conversation (no permitted social source connected yet)",
+  engagement: "Public conversation (posts on permitted platforms, last six hours)",
   breadth: "How many countries it touches",
 };
 const CONFIDENCE_PARTS: Record<string, string> = {

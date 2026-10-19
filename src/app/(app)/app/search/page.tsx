@@ -3,13 +3,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ChipNav } from "@/components/news/chip-nav";
-import { StoryList } from "@/components/news/edition";
+import { SectionHead, StoryList } from "@/components/news/edition";
 import { FollowButton } from "@/components/news/follow-button";
 import { RecentSearches } from "@/components/news/recent-searches";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { CATEGORIES, isCategorySlug } from "@/config/categories";
 import { requireSession } from "@/lib/auth/session";
+import { searchByMeaning } from "@/lib/services/search";
 import { searchableSources, searchStories } from "@/lib/queries/stories";
 import { listInterests, savedStoryIds } from "@/lib/services/reader";
 
@@ -42,6 +43,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const min = params.min === "2" ? 2 : undefined;
 
   const stories = tab === "stories" && query ? await searchStories({ query, scope, category, withinHours: Number(days) * 24, minSources: min }) : [];
+  // Beside the word search, never instead of it: the stories it found are not repeated.
+  const meaning = tab === "stories" && query ? await searchByMeaning(session.user.id, query, { scope, category, minSources: min }, new Set(stories.map((story) => story.id))) : { stories: [], available: false };
   const sources = tab === "sources" ? await searchableSources() : [];
   const interests = await listInterests(session.user.id);
   const saved = await savedStoryIds(session.user.id);
@@ -113,6 +116,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
               <StoryList placed={stories.map((story) => ({ story }))} now={now} saved={saved} label={`Results for ${query}`} />
             </>
           )}
+          {meaning.stories.length ? (
+            <section aria-labelledby="meaning-heading" className="space-y-3 pt-4">
+              <SectionHead id="meaning-heading" kicker="Found by meaning, not by your words" title="Close in meaning" />
+              <p className="text-sm text-text-secondary">An AI model compared what you typed with each headline. These do not contain your words; check that they are what you meant.</p>
+              <StoryList placed={meaning.stories.map((story) => ({ story }))} now={now} saved={saved} label={`Close in meaning to ${query}`} />
+            </section>
+          ) : null}
         </>
       ) : null}
 

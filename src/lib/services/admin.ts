@@ -5,11 +5,12 @@ import { uuidv7 } from "uuidv7";
 
 import type { CurrentSession } from "@/lib/auth/session";
 import { execRows, withSystem, withUser } from "@/lib/db/scope";
-import { isoInstant } from "@/lib/db/sql";
+import { isoInstant, textArray } from "@/lib/db/sql";
 import { ADMIN_DISABLED } from "@/lib/ingestion/registry";
 import { adminEmails } from "@/lib/env";
 import { AppError, notFound } from "@/lib/errors";
-import { dryRunSource, type DryRun } from "@/lib/ingestion/pipeline";
+import { titleSignature } from "@/lib/ingestion/normalize";
+import { dryRunSource, refreshStory, type DryRun } from "@/lib/ingestion/pipeline";
 
 import { sendTest } from "./notifications";
 import { setSwitch, type SwitchKey } from "./ops";
@@ -188,4 +189,171 @@ export async function dryRun(session: CurrentSession | null, sourceId: string): 
 export async function testSendToSelf(session: CurrentSession | null) {
   const admin = await requireAdmin(session);
   return sendTest(admin.user.id);
+}
+
+/* ------------------------------------------------- phase 4: the newsroom */
+
+export type OpenReport = { id: string; reason: string; detail: string; createdAt: string; storyId: string | null; headline: string | null };
+
+/** Open reports, oldest first. What was reported and why; nothing about who reported it. */
+export async function openReports(session: CurrentSession | null): Promise<OpenReport[]> {
+  await requireAdmin(session);
+  return withSystem("admin.reports", (tx) =>
+    execRows<OpenReport>(
+      tx,
+      sql`select r.id, r.reason, r.detail, ${isoInstant(sql`r.created_at`)} as "createdAt", r.story_id as "storyId", st.headline
+            from content_reports r left join stories st on st.id = r.story_id
+           where r.status = 'open' order by r.created_at limit 50`,
+    ),
+  );
+}
+
+export async function resolveReport(session: CurrentSession | null, input: { reportId: string; status: "actioned" | "dismissed"; resolution: string }): Promise<void> {
+  const admin = await requireAdmin(session);
+  await withSystem("admin.report.resolve", async (tx) => {
+    const rows = await execRows(
+      tx,
+      sql`update content_reports set status = ${input.status}, resolution = ${input.resolution.trim().slice(0, 500) || null}, resolved_at = now()
+           where id = ${input.reportId}::uuid and status = 'open' returning id`,
+    );
+    if (rows.length === 0) throw notFound("That report");
+    await tx.execute(
+      sql`insert into audit_events (id, actor_user_id, action, target_kind, target_id, detail)
+          values (${uuidv7()}::uuid, ${admin.user.id}::uuid, ${`report.${input.status}`}, 'report', ${input.reportId}, ${input.resolution.trim().slice(0, 500)})`,
+    );
+  });
+}
+
+export type DuplicatePair = { keepId: string; keepHeadline: string; keepSources: number; mergeId: string; mergeHeadline: string; mergeSources: number; distance: number };
+
+/**
+ * Stories that are probably one event the clusterer kept apart: headlines
+ * almost the same in meaning (embedding distance under 0.25), both updated in
+ * the last two days. A suggestion for a person to confirm, never merged
+ * automatically: "almost the same" includes two different fires on one day.
+ */
+export async function possibleDuplicates(session: CurrentSession | null, limit = 12): Promise<DuplicatePair[]> {
+  await requireAdmin(session);
+  return withSystem("admin.duplicates", (tx) =>
+    execRows<DuplicatePair>(
+      tx,
+      sql`select a.id as "keepId", a.headline as "keepHeadline", a.source_count as "keepSources",
+                 b.id as "mergeId", b.headline as "mergeHeadline", b.source_count as "mergeSources",
+                 round((ea.embedding <=> eb.embedding)::numeric, 3)::float as distance
+            from stories a join story_embeddings ea on ea.story_id = a.id
+            join lateral (
+              select s.id, s.headline, s.source_count, e.embedding from stories s join story_embeddings e on e.story_id = s.id
+               where s.id <> a.id and s.last_updated_at > now() - interval '48 hours'
+                 and (s.source_count < a.source_count or (s.source_count = a.source_count and s.id > a.id))
+               order by e.embedding <=> ea.embedding limit 1
+            ) b on true
+            join story_embeddings eb on eb.story_id = b.id
+           where a.last_updated_at > now() - interval '48 hours' and (ea.embedding <=> eb.embedding) < 0.25
+           order by distance limit ${limit}`,
+    ),
+  );
+}
+
+/**
+ * Merge one story into another, in one transaction: its reports, what readers
+ * attached to it (saves, feedback, reading), its posts, notifications and
+ * reports move to the kept story; its explainers are dropped (the kept story's
+ * records changed, so its own is due again); then it is deleted and the kept
+ * story rescored. Audited with both headlines.
+ */
+export async function mergeStories(session: CurrentSession | null, input: { keepId: string; mergeId: string }): Promise<{ movedItems: number }> {
+  const admin = await requireAdmin(session);
+  if (input.keepId === input.mergeId) throw new AppError("VALIDATION", "A story cannot be merged into itself.");
+  return withSystem("admin.merge", async (tx) => {
+    const both = await execRows<{ id: string; headline: string }>(tx, sql`select id, headline from stories where id in (${input.keepId}::uuid, ${input.mergeId}::uuid) for update`);
+    if (both.length !== 2) throw notFound("That story");
+    const keep = input.keepId;
+    const merge = input.mergeId;
+    const moved = await execRows(tx, sql`update story_items set story_id = ${keep}::uuid, method = 'manual' where story_id = ${merge}::uuid returning id`);
+    // A reader's row follows the story, unless they already have the same on the kept one (then it goes with the merged story).
+    await tx.execute(sql`update bookmarks b set story_id = ${keep}::uuid where story_id = ${merge}::uuid
+                          and not exists (select 1 from bookmarks x where x.user_id = b.user_id and x.story_id = ${keep}::uuid)`);
+    await tx.execute(sql`update reading_history h set story_id = ${keep}::uuid where story_id = ${merge}::uuid
+                          and not exists (select 1 from reading_history x where x.user_id = h.user_id and x.story_id = ${keep}::uuid)`);
+    await tx.execute(sql`update user_story_feedback f set story_id = ${keep}::uuid where story_id = ${merge}::uuid
+                          and not exists (select 1 from user_story_feedback x where x.user_id = f.user_id and x.story_id = ${keep}::uuid and x.kind = f.kind)`);
+    await tx.execute(sql`update social_posts set story_id = ${keep}::uuid where story_id = ${merge}::uuid`);
+    await tx.execute(sql`update story_updates set story_id = ${keep}::uuid where story_id = ${merge}::uuid`);
+    await tx.execute(sql`update content_reports set story_id = ${keep}::uuid where story_id = ${merge}::uuid`);
+    await tx.execute(sql`update notification_events set story_id = ${keep}::uuid where story_id = ${merge}::uuid`);
+    await tx.execute(sql`delete from ai_briefings where story_id = ${merge}::uuid`);
+    await tx.execute(sql`delete from stories where id = ${merge}::uuid`);
+    await refreshStory(tx, keep);
+    const headlines = Object.fromEntries(both.map((story) => [story.id, story.headline]));
+    await tx.execute(
+      sql`insert into audit_events (id, actor_user_id, action, target_kind, target_id, detail)
+          values (${uuidv7()}::uuid, ${admin.user.id}::uuid, 'story.merge', 'story', ${keep}, ${`merged "${headlines[merge]}" into "${headlines[keep]}"`.slice(0, 1000)})`,
+    );
+    return { movedItems: moved.length };
+  });
+}
+
+/**
+ * Move one report out of a story into a story of its own, when the clusterer
+ * attached it wrongly. Its association is marked manual, so a later run does
+ * not put it back. Both stories are rescored; audited.
+ */
+export async function splitItem(session: CurrentSession | null, input: { storyId: string; itemId: string }): Promise<{ newStoryId: string }> {
+  const admin = await requireAdmin(session);
+  return withSystem("admin.split", async (tx) => {
+    const item = (
+      await execRows<{ title: string; categories: string[]; countries: string[]; states: string[]; count: number }>(
+        tx,
+        sql`select i.title, i.categories, i.event_countries as countries, i.indian_states as states,
+                   (select count(*)::int from story_items where story_id = ${input.storyId}::uuid) as count
+              from story_items si join raw_source_items i on i.id = si.item_id
+             where si.story_id = ${input.storyId}::uuid and si.item_id = ${input.itemId}::uuid`,
+      )
+    )[0];
+    if (!item) throw notFound("That report");
+    if (item.count < 2) throw new AppError("INVALID_STATE", "A story with one report is already on its own.");
+    const newStoryId = uuidv7();
+    await tx.execute(
+      sql`insert into stories (id, headline, headline_item_id, signature, scope, categories, primary_category, event_countries, indian_states)
+          values (${newStoryId}::uuid, ${item.title}, ${input.itemId}::uuid, ${titleSignature(item.title)}, ${item.countries.includes("IN") ? "india" : "global"},
+                  ${textArray(item.categories)}, ${item.categories[0] ?? null}, ${textArray(item.countries)}, ${textArray(item.states)})`,
+    );
+    await tx.execute(sql`update story_items set story_id = ${newStoryId}::uuid, method = 'manual', association_confidence = 100 where item_id = ${input.itemId}::uuid`);
+    // The old story may have used this report's words as its headline: point it at one it still has.
+    await tx.execute(
+      sql`update stories set headline_item_id = si.item_id, headline = i.title
+            from (select item_id from story_items where story_id = ${input.storyId}::uuid order by associated_at limit 1) si
+            join raw_source_items i on i.id = si.item_id
+           where stories.id = ${input.storyId}::uuid and stories.headline_item_id = ${input.itemId}::uuid`,
+    );
+    await refreshStory(tx, input.storyId);
+    await refreshStory(tx, newStoryId);
+    await tx.execute(
+      sql`insert into audit_events (id, actor_user_id, action, target_kind, target_id, detail)
+          values (${uuidv7()}::uuid, ${admin.user.id}::uuid, 'story.split', 'story', ${input.storyId}, ${`moved "${item.title}" to its own story`.slice(0, 1000)})`,
+    );
+    return { newStoryId };
+  });
+}
+
+export type AdminAi = { byStatus: { status: string; count: number }[]; tokens: number; embedded: number };
+
+/** The AI pass over the last day: outputs by outcome, tokens used, headlines embedded. */
+export async function adminAi(session: CurrentSession | null): Promise<AdminAi> {
+  await requireAdmin(session);
+  return withSystem("admin.ai", async (tx) => {
+    const byStatus = await execRows<{ status: string; count: number }>(
+      tx,
+      sql`select status, count(*)::int as count from ai_briefings where generated_at > now() - interval '24 hours' group by status order by status`,
+    );
+    const totals = (
+      await execRows<{ tokens: number; embedded: number }>(
+        tx,
+        sql`select coalesce(sum(coalesce(prompt_tokens, 0) + coalesce(completion_tokens, 0)), 0)::int as tokens,
+                   (select count(*)::int from story_embeddings where embedded_at > now() - interval '24 hours') as embedded
+              from ai_briefings where generated_at > now() - interval '24 hours'`,
+      )
+    )[0]!;
+    return { byStatus, ...totals };
+  });
 }
