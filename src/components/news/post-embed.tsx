@@ -17,6 +17,7 @@ const PLATFORM: Record<PostCard["platform"], { name: string; reposts: string; li
  */
 export function PostEmbed({ post, now }: { post: PostCard; now: Date }) {
   const platform = PLATFORM[post.platform];
+  if (post.platform === "youtube") return <VideoEmbed post={post} now={now} />;
   return (
     <figure className="border border-border bg-surface">
       <figcaption className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-2 text-xs text-text-secondary">
@@ -43,6 +44,46 @@ export function PostEmbed({ post, now }: { post: PostCard; now: Date }) {
       />
       <p className="border-t border-border px-3 py-1.5 text-xs text-text-tertiary">
         {post.replies} replies · {post.reposts} {platform.reposts} · {post.likes} {platform.likes} when last checked. Counts, not evidence.
+      </p>
+    </figure>
+  );
+}
+
+/**
+ * A video from an official channel, in YouTube's own player: never sandboxed
+ * or altered (its policies forbid blocking any of the player's functions),
+ * YouTube named as the source, and no statistics -- they are not kept.
+ */
+function VideoEmbed({ post, now }: { post: PostCard; now: Date }) {
+  return (
+    <figure className="border border-border bg-surface">
+      <figcaption className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-2 text-xs text-text-secondary">
+        <span className="font-semibold uppercase tracking-[0.08em] text-text-primary">Video</span>
+        <span aria-hidden>·</span>
+        <span>YouTube</span>
+        <span aria-hidden>·</span>
+        <span className="font-medium text-text-primary">{post.authorName ?? post.authorHandle}</span>
+        <span aria-hidden>·</span>
+        <time dateTime={post.postedAt}>{relativeTime(post.postedAt, now)}</time>
+        <a href={post.url} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-semibold text-text-primary underline-offset-4 hover:underline">
+          <ExternalLink className="size-3.5" aria-hidden /> Watch on YouTube<span className="sr-only"> (opens in a new tab)</span>
+        </a>
+      </figcaption>
+      <iframe
+        src={post.embedUrl}
+        title={`Video from ${post.authorName ?? post.authorHandle} on YouTube`}
+        loading="lazy"
+        allow="encrypted-media; picture-in-picture; fullscreen"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+        className="block aspect-video w-full border-0 bg-surface-sunken"
+      />
+      <p className="border-t border-border px-3 py-1.5 text-xs text-text-tertiary">
+        From an official channel, played by YouTube under{" "}
+        <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+          YouTube&rsquo;s Terms of Service
+        </a>
+        .
       </p>
     </figure>
   );

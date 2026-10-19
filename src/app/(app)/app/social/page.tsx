@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { categoryFor } from "@/config/categories";
 import { requireSession } from "@/lib/auth/session";
-import { conversations, platformStates, postsForTopic, topTopics } from "@/lib/queries/social";
+import { conversations, officialVideos, platformStates, postsForTopic, topTopics } from "@/lib/queries/social";
 
 export const metadata: Metadata = { title: "Social Pulse" };
 
@@ -22,7 +22,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
   await requireSession();
   const now = new Date();
   const { topic: rawTopic } = await searchParams;
-  const [platforms, stories, topics] = await Promise.all([platformStates(), conversations(10, 2), topTopics(16)]);
+  const [platforms, stories, topics, videos] = await Promise.all([platformStates(), conversations(10, 2), topTopics(16), officialVideos(4)]);
   const topic = topics.find((entry) => entry.tag === rawTopic?.toLowerCase())?.tag;
   const topicPosts = topic ? await postsForTopic(topic, 9) : [];
   const connected = platforms.filter((platform) => platform.connected);
@@ -46,7 +46,11 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
                 {platform.name} <Badge tone={platform.connected ? "outline" : "neutral"}>{platform.connected ? "connected" : "not connected"}</Badge>
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                {platform.connected ? `${platform.postsDay} ${platform.postsDay === 1 ? "post" : "posts"} kept in the last day.` : (platform.reason ?? "Not connected.")}
+                {!platform.connected
+                  ? (platform.reason ?? "Not connected.")
+                  : platform.postsDay === null
+                    ? "Official channels' videos, in YouTube's own player. Shown, never counted."
+                    : `${platform.postsDay} ${platform.postsDay === 1 ? "post" : "posts"} kept in the last day.`}
               </p>
             </li>
           ))}
@@ -86,6 +90,17 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
               </ol>
             )}
           </section>
+
+          {videos.length ? (
+            <section aria-labelledby="videos-heading" className="space-y-4">
+              <SectionHead id="videos-heading" kicker="Official channels, newest first" title="Official video" />
+              <div className="grid gap-4 md:grid-cols-2">
+                {videos.map((video) => (
+                  <PostEmbed key={video.id} post={video} now={now} />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section aria-labelledby="topics-heading" className="space-y-4">
             <SectionHead id="topics-heading" kicker="Hashtags, the last day" title="Most discussed topics" />

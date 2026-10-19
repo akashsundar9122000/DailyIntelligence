@@ -224,7 +224,8 @@ export async function refreshStory(tx: Tx, storyId: string): Promise<void> {
           floor(extract(epoch from now() - max(st.first_seen_at)) / 60)::int as age_minutes,
           floor(extract(epoch from now() - max(si.associated_at)) / 60)::int as quiet_minutes,
           (select count(*)::int from social_posts sp join sources ss on ss.id = sp.source_id
-            where sp.story_id = ${storyId}::uuid and ss.rights_status = 'cleared' and sp.posted_at > now() - interval '6 hours') as social_six
+            -- Not YouTube: its policies forbid turning API data into derived metrics, and heat is one.
+            where sp.story_id = ${storyId}::uuid and ss.rights_status = 'cleared' and sp.platform <> 'youtube' and sp.posted_at > now() - interval '6 hours') as social_six
         from story_items si
         join raw_source_items r on r.id = si.item_id
         join sources s on s.id = r.source_id

@@ -23,7 +23,7 @@ import { requireSession } from "@/lib/auth/session";
 import { aiConfigured } from "@/lib/env";
 import { formatInstant, relativeTime, timesLine } from "@/lib/format/date";
 import { explainerFor } from "@/lib/queries/ai";
-import { postsForStory } from "@/lib/queries/social";
+import { postsForStory, videosForStory } from "@/lib/queries/social";
 import { getPreferences } from "@/lib/queries/preferences";
 import { relatedStories, storyDetail, type StorySource } from "@/lib/queries/stories";
 import { isAdmin } from "@/lib/services/admin";
@@ -111,6 +111,7 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
   const account = plainAccount(detail);
   const explainer = await explainerFor(story.id);
   const conversation = await postsForStory(story.id, 4);
+  const videos = await videosForStory(story.id, 2);
   // The cards use only what is already on this page: the checked explainer, and the records it was written from.
   const explained = new Set(explainer?.sourceItemIds ?? []);
   const slides = explainer
@@ -244,6 +245,17 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
               <div className="grid gap-4 md:grid-cols-2">
                 {conversation.map((post) => (
                   <PostEmbed key={post.id} post={post} now={now} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {videos.length ? (
+            <section aria-labelledby="videos" className="space-y-4">
+              <SectionHead id="videos" kicker="From official channels" title="Video" />
+              <div className="grid gap-4 md:grid-cols-2">
+                {videos.map((video) => (
+                  <PostEmbed key={video.id} post={video} now={now} />
                 ))}
               </div>
             </section>

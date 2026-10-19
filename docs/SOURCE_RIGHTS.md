@@ -109,6 +109,17 @@ Fetched on a schedule. Shown only as the flags allow.
 - **Polled:** every 15 min
 - **From the terms:** “Whoever owns the Content retains ownership. ... When you upload Content to the Service, you are making it available via the Internet. Anyone, or any computer, might access your Content via RSS aggregators and readers, embed your Content in web pages and other media, or index and store your Content in search engines and databases.”
 
+### YouTube (official channels) (`youtube-official`)
+
+- **Kind:** Video · provider `youtube` · https://www.googleapis.com/youtube/v3/
+- **Terms read:** 2026-10-19 — https://developers.google.com/youtube/terms/developer-policies
+- **Decision:** cleared. Recent public, embeddable videos from a short list of official channels, through the YouTube Data API with this deployment's key, shown only in YouTube's own player and never altered. Kept seven days (the policies allow thirty), checked again before then. No statistics are kept, and videos are never counted, scored or turned into any measure: the policies forbid derived data and aggregation.
+- **May show:** headline no · excerpt no · AI summary no · media no · commercial use no
+- **Attribution:** YouTube, in YouTube's own player, with a link to the video and to YouTube's Terms of Service
+- **Retention:** 7 days
+- **Polled:** every 30 min
+- **From the terms:** “After 30 calendar days, the API Client must either delete or refresh the stored data. ... You must not ... modify, build upon, or block any portion or functionality of a YouTube player ... make clear to the viewer that YouTube is the source of the relevant content ... Do not ... access or use API Data to create new or derived data or metrics.”
+
 ## Pending review
 
 Not fetched until the question in each note is settled.

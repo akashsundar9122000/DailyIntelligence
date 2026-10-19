@@ -31,6 +31,15 @@ export default function PrivacyPage() {
       <ProseSection id="processors" title="Who processes it">
         <p>The service runs on Vercel (application hosting) and Neon (database), in the Singapore region. Sign-in codes are sent by email through Google&rsquo;s mail servers. If you use &ldquo;Continue with Google&rdquo;, Google tells us your email address and name.</p>
       </ProseSection>
+      <ProseSection id="embedded" title="Posts and videos from other services">
+        <p>
+          Social Pulse and story pages show public posts from mastodon.social in its own embed, and videos from official channels in YouTube&rsquo;s own player, using YouTube API
+          Services. Those services see that their content was shown to you, under their own policies: YouTube&rsquo;s player runs in its privacy-enhanced mode and sets no cookie until
+          you play a video. Playing one is covered by{" "}
+          <a href="https://www.youtube.com/t/terms">YouTube&rsquo;s Terms of Service</a> and{" "}
+          <a href="https://policies.google.com/privacy">Google&rsquo;s Privacy Policy</a>. We send these services nothing about you, and keep none of their data about you.
+        </p>
+      </ProseSection>
     </ProsePage>
   );
 }

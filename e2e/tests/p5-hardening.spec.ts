@@ -18,7 +18,7 @@ test.describe("the content security policy", () => {
     expect(nonce).toBeTruthy();
     expect(/'nonce-([^']+)'/.exec(second.headers()["content-security-policy"] ?? "")?.[1]).not.toBe(nonce);
     expect(policy).toContain("'strict-dynamic'");
-    expect(policy).toContain("frame-src https://mastodon.social https://embed.bsky.app");
+    expect(policy).toContain("frame-src https://mastodon.social https://embed.bsky.app https://www.youtube-nocookie.com");
     expect(policy).toContain("object-src 'none'");
     expect(policy).not.toContain("unsafe-eval");
     // Served over plain http here: upgrading requests would point the page at a port that is not listening.

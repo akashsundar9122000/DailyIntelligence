@@ -402,6 +402,51 @@ export const SOURCE_CATALOGUE: SourceDefinition[] = [
     config: { hashtags: ["india", "cricket", "climate", "science", "ai", "technology", "worldnews", "bollywood", "football", "space"] },
   },
 
+  {
+    key: "youtube-official",
+    name: "YouTube (official channels)",
+    kindLabel: "Video",
+    canonicalDomain: "youtube.com",
+    sourceType: "video",
+    provider: "youtube",
+    feedUrl: "https://www.googleapis.com/youtube/v3/",
+    countryOrRegion: "global",
+    language: "en",
+    categories: [],
+    isOfficial: false,
+    contentType: "video",
+    rights: {
+      status: "cleared",
+      termsUrl: "https://developers.google.com/youtube/terms/developer-policies",
+      checkedOn: "2026-10-19",
+      commercialUse: false,
+      headline: false,
+      excerpt: false,
+      aiSummary: false,
+      media: false,
+      attribution: "YouTube, in YouTube's own player, with a link to the video and to YouTube's Terms of Service",
+      note: "Recent public, embeddable videos from a short list of official channels, through the YouTube Data API with this deployment's key, shown only in YouTube's own player and never altered. Kept seven days (the policies allow thirty), checked again before then. No statistics are kept, and videos are never counted, scored or turned into any measure: the policies forbid derived data and aggregation.",
+      operativeQuote:
+        "After 30 calendar days, the API Client must either delete or refresh the stored data. ... You must not ... modify, build upon, or block any portion or functionality of a YouTube player ... make clear to the viewer that YouTube is the source of the relevant content ... Do not ... access or use API Data to create new or derived data or metrics.",
+      retentionDays: 7,
+    },
+    // The uploads playlists cost one quota unit each; every half hour keeps the day's use near 700 of 10,000.
+    pollIntervalSeconds: 1800,
+    priority: 80,
+    // Official bodies and public broadcasters only. Each channel id checked to exist on 19 October 2026.
+    config: {
+      channels: [
+        { id: "UCLA_DiR1FfKNvjuUpBHmylQ", name: "NASA" },
+        { id: "UC07-dOwgza1IguKA86jqxNA", name: "World Health Organization (WHO)" },
+        { id: "UC5O114-PQNYkurlTg6hekZw", name: "United Nations" },
+        { id: "UCGn6a5SI8SNlj7WylmPD6GQ", name: "PIB India" },
+        { id: "UCw5hEVOTfz_AfzsNFWyNlNg", name: "ISRO Official" },
+        { id: "UCKwucPzHZ7zCUIf7If-Wo1g", name: "DD News" },
+        { id: "UChqUTb7kYRX8-EiaN3XFrSQ", name: "Reuters" },
+      ],
+    },
+  },
+
   /* ------------------------------------------------------------ excluded */
   ...(
     [

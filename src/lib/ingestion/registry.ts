@@ -5,6 +5,7 @@ import { uuidv7 } from "uuidv7";
 
 import type { Tx } from "@/lib/db/scope";
 import { textArray } from "@/lib/db/sql";
+import { youtubeConfigured } from "@/lib/env";
 import type { Provider } from "@/lib/db/schema/news";
 import { SOURCE_CATALOGUE, type SourceDefinition } from "@/lib/sources/catalogue";
 
@@ -12,6 +13,7 @@ import { blueskyAdapter } from "./adapters/bluesky";
 import { gdeltGkgAdapter } from "./adapters/gdelt-gkg";
 import { mastodonAdapter } from "./adapters/mastodon";
 import { rssAdapter } from "./adapters/rss";
+import { youtubeAdapter } from "./adapters/youtube";
 import type { SocialAdapter, SourceAdapter } from "./types";
 
 /** The adapters that exist. A cleared source whose provider has none yet stays off, with that reason. */
@@ -24,6 +26,7 @@ export const ADAPTERS: Partial<Record<Provider, SourceAdapter>> = {
 export const SOCIAL_ADAPTERS: Partial<Record<Provider, SocialAdapter>> = {
   mastodon: mastodonAdapter,
   bluesky: blueskyAdapter,
+  youtube: youtubeAdapter,
 };
 
 /** The prefix an administrator's own "switched off" carries. The catalogue never switches such a source back on. */
@@ -32,6 +35,8 @@ export const ADMIN_DISABLED = "admin:";
 function wanted(source: SourceDefinition): { enabled: boolean; reason: string | null } {
   if (source.rights.status !== "cleared") return { enabled: false, reason: `rights: ${source.rights.status.replace("_", " ")}` };
   if (!ADAPTERS[source.provider] && !SOCIAL_ADAPTERS[source.provider]) return { enabled: false, reason: "no adapter for this provider yet" };
+  // Cleared, but it can only be read with this deployment's own key.
+  if (source.provider === "youtube" && !youtubeConfigured()) return { enabled: false, reason: "needs a YouTube Data API key (YOUTUBE_API_KEY)" };
   return { enabled: true, reason: null };
 }
 

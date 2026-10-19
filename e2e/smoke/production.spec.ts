@@ -53,7 +53,7 @@ test("a signed-out visitor is sent to sign in, not shown the paper", async ({ pa
 test("pages carry a content security policy with a fresh nonce, upgraded to https, and embeds from only the cleared platforms", async ({ request }) => {
   const policy = (await request.get("/login")).headers()["content-security-policy"] ?? "";
   expect(policy).toMatch(/script-src 'self' 'nonce-[^']+' 'strict-dynamic'/);
-  expect(policy).toContain("frame-src https://mastodon.social https://embed.bsky.app");
+  expect(policy).toContain("frame-src https://mastodon.social https://embed.bsky.app https://www.youtube-nocookie.com");
   expect(policy).toContain("upgrade-insecure-requests");
   expect(policy).not.toContain("unsafe-eval");
 });

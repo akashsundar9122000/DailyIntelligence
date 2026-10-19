@@ -23,7 +23,7 @@ export const REQUESTED_PATH_HEADER = "x-requested-path";
 export const NONCE_HEADER = "x-nonce";
 
 /** Where a social post's embed may come from: the platforms whose terms were read (src/lib/sources/catalogue.ts). */
-const EMBED_ORIGINS = ["https://mastodon.social", "https://embed.bsky.app"];
+const EMBED_ORIGINS = ["https://mastodon.social", "https://embed.bsky.app", "https://www.youtube-nocookie.com"];
 
 export function contentSecurityPolicy(nonce: string, { https, dev }: { https: boolean; dev: boolean }): string {
   return [
