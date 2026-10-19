@@ -39,17 +39,17 @@ test.describe("the signed-in shell, on a wide screen", () => {
     await page.waitForResponse((response) => response.request().method() === "POST" && response.status() === 200);
   });
 
-  test("switches between the day and night editions, and keeps the choice", async ({ page }) => {
+  test("switches between day and night, and keeps the choice", async ({ page }) => {
     await page.goto("/app");
     const html = page.locator("html");
     const before = await html.getAttribute("data-theme");
-    await page.getByRole("button", { name: "Switch between the day and night editions" }).click();
+    await page.getByRole("button", { name: "Switch between day and night" }).click();
     await expect(html).toHaveAttribute("data-theme", before === "dark" ? "light" : "dark");
     await page.waitForResponse((response) => response.request().method() === "POST" && response.status() === 200);
     await page.reload();
     await expect(html).toHaveAttribute("data-theme", before === "dark" ? "light" : "dark");
     // Put it back for the next spec.
-    await page.getByRole("button", { name: "Switch between the day and night editions" }).click();
+    await page.getByRole("button", { name: "Switch between day and night" }).click();
     await page.waitForResponse((response) => response.request().method() === "POST" && response.status() === 200);
   });
 

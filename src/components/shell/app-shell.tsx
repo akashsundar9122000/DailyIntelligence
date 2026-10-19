@@ -138,8 +138,8 @@ function useSignOut() {
 }
 
 /**
- * Day to night edition and back, in one press, and saved like any other choice
- * of colour scheme. The full list is in the account menu and in Settings.
+ * Day to night and back, in one press, within the reader's palette, and saved
+ * like any other choice of colour scheme. The full list is in the account menu and in Settings.
  *
  * The label and the icon do not say which scheme is on: that is only known in
  * the browser, and a button whose name differed between the server's HTML and
@@ -151,10 +151,10 @@ function useThemeToggle() {
   return useCallback(() => {
     // The scheme actually on screen, whichever preference produced it.
     const showing = document.documentElement.dataset.theme;
-    update({ theme: showing === "light" ? "dark" : "light" });
+    update({ mode: showing === "light" ? "dark" : "light" });
   }, [update]);
 }
-const THEME_TOGGLE_LABEL = "Switch between the day and night editions";
+const THEME_TOGGLE_LABEL = "Switch between day and night";
 
 function ProfileMenu({ user }: { user: ShellUser }) {
   const { update } = usePreferences();
@@ -188,7 +188,7 @@ function ProfileMenu({ user }: { user: ShellUser }) {
           </div>
           <div className="px-3 py-2">
             <p className="pb-1.5 text-xs font-medium text-text-secondary">Colour scheme</p>
-            <ThemeSwitcher onChoose={(theme) => update({ theme })} />
+            <ThemeSwitcher onChoose={(mode) => update({ mode })} />
           </div>
           <Dropdown.Separator className="my-1 h-px bg-border" />
           <Dropdown.Item asChild>
@@ -281,7 +281,7 @@ export function AppShell({ user, notifications, strip, children }: { user: Shell
   return (
     <>
     {/* On paper the frame is not a fixed box with a scrolling middle: that prints one sheet and cuts the rest off. */}
-    <div id="app-frame" className="flex h-dvh overflow-hidden bg-canvas print:block print:h-auto print:overflow-visible">
+    <div id="app-frame" className="flex h-dvh overflow-hidden print:block print:h-auto print:overflow-visible">
       <a
         href="#content"
         className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-3 focus-visible:top-3 focus-visible:z-[var(--z-overlay)] focus-visible:rounded-md focus-visible:bg-ink focus-visible:px-3 focus-visible:py-2 focus-visible:text-sm focus-visible:text-on-ink"
@@ -291,7 +291,7 @@ export function AppShell({ user, notifications, strip, children }: { user: Shell
 
       <aside
         className={cn(
-          "hidden shrink-0 flex-col gap-4 border-r border-border-strong bg-surface py-4 lg:flex print:hidden!",
+          "chrome hidden shrink-0 flex-col gap-4 border-r border-border-strong py-4 lg:flex print:hidden!",
           expanded ? "w-[var(--rail-w)] px-3" : "w-[4.5rem] items-center px-0",
         )}
       >
@@ -325,7 +325,7 @@ export function AppShell({ user, notifications, strip, children }: { user: Shell
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[var(--header-h)] shrink-0 items-center gap-3 border-b border-border-strong bg-surface px-4 pt-[var(--safe-top)] sm:px-6 print:hidden!">
+        <header className="chrome flex h-[var(--header-h)] shrink-0 items-center gap-3 border-b border-border-strong px-4 pt-[var(--safe-top)] sm:px-6 print:hidden!">
           <Link href="/app" aria-label={`${brand.name}, For You`} className="lg:hidden">
             <Mark className="size-8" />
           </Link>
@@ -362,7 +362,7 @@ export function AppShell({ user, notifications, strip, children }: { user: Shell
           </Button>
         </header>
 
-        <div className="flex h-10 min-w-0 shrink-0 items-center gap-3 overflow-hidden border-b border-border bg-canvas px-4 text-sm sm:px-6 md:overflow-x-auto print:hidden!" role="region" aria-label="Edition"
+        <div className="flex h-10 min-w-0 shrink-0 items-center gap-3 overflow-hidden border-b border-border px-4 text-sm sm:px-6 md:overflow-x-auto print:hidden!" role="region" aria-label="Edition"
           // It scrolls sideways on a phone. A scrolling region that cannot take
           // focus cannot be scrolled from a keyboard.
           tabIndex={0}

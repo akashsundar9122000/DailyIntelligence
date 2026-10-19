@@ -33,7 +33,7 @@ export function Segmented<V extends string>({
   return (
     <fieldset className={cn("min-w-0", className)}>
       <legend className="sr-only">{legend}</legend>
-      <div className="inline-flex max-w-full flex-wrap gap-1 border border-border-strong bg-surface-sunken p-1">
+      <div className="inline-flex max-w-full flex-wrap gap-1 rounded-md border border-border-strong bg-surface-sunken p-1">
         {options.map((option) => (
           <label key={option.value} className="relative">
             <input
@@ -46,7 +46,7 @@ export function Segmented<V extends string>({
             />
             <span
               className={cn(
-                "flex cursor-pointer items-center font-medium text-text-secondary coarse:h-11",
+                "flex cursor-pointer items-center rounded-sm font-medium text-text-secondary transition-colors coarse:h-11",
                 size === "sm" ? "h-7 px-2.5 text-xs" : "h-9 px-3 text-sm",
                 "peer-checked:bg-ink peer-checked:text-on-ink",
                 "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent",

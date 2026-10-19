@@ -16,7 +16,7 @@ export function AuthCard({
 }) {
   return (
     <div className="w-full max-w-[26rem]">
-      <div className="border-t-[3px] border-text-primary pt-4">
+      <div className="border-t-[3px] border-rule pt-4">
         {kicker ? <p className="kicker text-text-tertiary">{kicker}</p> : null}
         <h1 tabIndex={-1} className="mt-1 text-4xl font-bold leading-[1.05] text-text-primary focus:outline-none sm:text-5xl">{title}</h1>
         {description ? <p className="dek mt-3 text-lg">{description}</p> : null}
@@ -38,7 +38,7 @@ export function FormError({ message }: { message: string | null }) {
 
 export function FormNotice({ children }: { children: ReactNode }) {
   return (
-    <p role="status" className="border-l-[3px] border-text-primary bg-surface-sunken px-3 py-2.5 text-sm text-text-primary">
+    <p role="status" className="border-l-[3px] border-rule bg-surface-sunken px-3 py-2.5 text-sm text-text-primary">
       {children}
     </p>
   );

@@ -24,7 +24,7 @@ function Marker({ n }: { n: number }) {
 export function StoryAnatomy() {
   return (
     <figure aria-labelledby="anatomy-caption" className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="self-start border border-border-strong border-t-2 border-t-text-primary bg-surface p-5" aria-hidden>
+      <div className="self-start border border-border-strong border-t-2 border-t-rule bg-surface p-5" aria-hidden>
         <div className="flex items-center gap-2">
           <Marker n={1} />
           <span className="kicker border border-current px-1.5 py-0.5 text-[0.625rem] text-text-secondary">Official</span>

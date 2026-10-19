@@ -94,7 +94,7 @@ export function VisualExplainer({ slides, refs }: { slides: Slide[]; refs: Recor
   const slide = slides[index]!;
   return (
     <section aria-labelledby="visual-explainer" className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-t-2 border-text-primary pt-2.5">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-t-2 border-rule pt-2.5">
         <div>
           <p className="kicker text-text-tertiary">Visual explainer · from the checked explainer and the records · no footage, no images</p>
           <h2 id="visual-explainer" className="text-2xl font-bold leading-tight">

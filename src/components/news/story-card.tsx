@@ -73,7 +73,7 @@ export function StoryCard({
         <div className="flex flex-wrap items-center gap-2">
           {story.sample ? <Badge tone="press">Sample</Badge> : null}
           {story.state === "developing" && story.heat >= 60 ? <Badge tone="press">Developing</Badge> : null}
-          <p className="kicker text-text-tertiary">{kickerOf(story)}</p>
+          <p className="kicker text-kicker">{kickerOf(story)}</p>
           <KindBadge story={story} />
         </div>
         <h3 id={`story-${story.id}`} className={cn("mt-1.5 text-text-primary", headlineClass)}>

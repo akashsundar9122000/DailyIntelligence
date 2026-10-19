@@ -45,7 +45,7 @@ export function InterestPicker() {
 
   const lead = priority[0] ?? chosen[0];
   return (
-    <div className="border border-border-strong border-t-[3px] border-t-text-primary bg-surface p-5 sm:p-7">
+    <div className="border border-border-strong border-t-[3px] border-t-rule bg-surface p-5 sm:p-7">
       <p className="kicker text-text-tertiary">Try it: choose your sections</p>
       <ul className="mt-4 flex flex-wrap gap-2" aria-label="Categories">
         {CATEGORIES.map((category) => {

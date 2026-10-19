@@ -41,7 +41,7 @@ export function AskStory({ storyId, recordCount }: { storyId: string; recordCoun
 
   return (
     <section aria-labelledby="ask" className="space-y-3">
-      <div className="border-t-2 border-text-primary pt-2.5">
+      <div className="border-t-2 border-rule pt-2.5">
         <p className="kicker text-text-tertiary">Answered from the {recordCount} records below</p>
         <h2 id="ask" className="text-2xl font-bold leading-tight">
           Ask about this story
@@ -78,7 +78,7 @@ export function AskStory({ storyId, recordCount }: { storyId: string; recordCoun
       </form>
       <div aria-live="polite">
         {result ? (
-          <div className="border-l-[3px] border-text-primary bg-surface px-4 py-3">
+          <div className="border-l-[3px] border-rule bg-surface px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-[0.08em] text-text-tertiary">You asked: {asked}</p>
             {result.kind === "answer" ? (
               <div className="mt-2 space-y-1.5 font-serif text-base leading-relaxed">

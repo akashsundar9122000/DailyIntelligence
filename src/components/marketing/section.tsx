@@ -28,7 +28,7 @@ export function Section({
   return (
     <section id={id} aria-labelledby={`${id}-title`} className={cn("scroll-mt-20 px-4 py-16 sm:px-6 lg:py-24", className)}>
       <div className="mx-auto max-w-[var(--container)]">
-        <div data-reveal className="border-t-[3px] border-text-primary pt-4">
+        <div data-reveal className="border-t-[3px] border-rule pt-4">
           <div className={cn("grid gap-4", wide ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end" : "max-w-3xl")}>
             <div>
               {kicker ? <p className="kicker text-text-tertiary">{kicker}</p> : null}

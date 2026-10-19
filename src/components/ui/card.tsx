@@ -3,12 +3,12 @@ import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "./cn";
 
 /**
- * The basic surface: a ruled sheet. A hairline frame with a thick ink rule
- * across the top, the way a newspaper boxes a panel. No shadow and no rounded
- * corners -- paper does not float.
+ * The basic surface. How it is drawn is the palette's (.card in tokens.css):
+ * a ruled sheet in Newspaper -- hairline frame, thick ink rule across the top,
+ * no shadow -- and a frosted pane in Aurora.
  */
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("border border-border border-t-2 border-t-text-primary bg-surface", className)} {...props} />;
+  return <div className={cn("card", className)} {...props} />;
 }
 
 export function CardHeader({

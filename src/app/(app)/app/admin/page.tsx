@@ -45,7 +45,7 @@ export default async function AdminPage() {
     <div className="mx-auto max-w-[var(--container)] space-y-10">
       <PageHeader kicker="Administration" title="The press room" description="Sources, runs and the scheduler, as they are now." />
 
-      <dl className="grid grid-cols-2 gap-0 border-t-2 border-text-primary sm:grid-cols-4 lg:grid-cols-7">
+      <dl className="grid grid-cols-2 gap-0 border-t-2 border-rule sm:grid-cols-4 lg:grid-cols-7">
         {[
           ["Stories", counts.stories],
           ["Updated today", counts.storiesDay],
@@ -229,7 +229,7 @@ export default async function AdminPage() {
         <SectionHead id="sources-heading" kicker={`${sources.filter((source) => source.enabled).length} switched on`} title="Sources" />
         <div className="overflow-x-auto">
           <table className="w-full min-w-[56rem] text-left text-sm">
-            <thead className="border-b-2 border-text-primary text-xs uppercase tracking-[0.06em] text-text-tertiary">
+            <thead className="border-b-2 border-rule text-xs uppercase tracking-[0.06em] text-text-tertiary">
               <tr>
                 <th className="py-2 pr-3 font-semibold">Source</th>
                 <th className="py-2 pr-3 font-semibold">Health</th>
@@ -275,7 +275,7 @@ export default async function AdminPage() {
         <SectionHead id="runs-heading" kicker="Newest first" title="Recent runs" />
         <div className="overflow-x-auto">
           <table className="w-full min-w-[48rem] text-left text-sm">
-            <thead className="border-b-2 border-text-primary text-xs uppercase tracking-[0.06em] text-text-tertiary">
+            <thead className="border-b-2 border-rule text-xs uppercase tracking-[0.06em] text-text-tertiary">
               <tr>
                 <th className="py-2 pr-3 font-semibold">When</th>
                 <th className="py-2 pr-3 font-semibold">Source</th>

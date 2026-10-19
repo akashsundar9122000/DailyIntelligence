@@ -20,7 +20,7 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <header className={cn("flex flex-col gap-4 border-b-2 border-text-primary pb-4 sm:flex-row sm:items-end sm:justify-between", className)}>
+    <header className={cn("flex flex-col gap-4 border-b-2 border-rule pb-4 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div className="min-w-0 space-y-1.5">
         {kicker ? <p className="kicker text-text-tertiary">{kicker}</p> : null}
         <h1 className="text-3xl font-bold leading-[1.1] text-text-primary sm:text-4xl">{title}</h1>

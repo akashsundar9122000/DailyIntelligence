@@ -77,7 +77,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
                 </div>
               ))}
             </section>
-            <section aria-label="What every story carries" className="mt-auto border-t-2 border-text-primary pt-4">
+            <section aria-label="What every story carries" className="mt-auto border-t-2 border-rule pt-4">
               <p className="kicker pb-4 text-text-tertiary">Anatomy of a story</p>
               <StoryAnatomy />
             </section>

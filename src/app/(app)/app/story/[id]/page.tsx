@@ -139,7 +139,7 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
         <span>{kickerOf(story).split(" · ")[0]}</span>
       </nav>
 
-      <header className="border-b-2 border-text-primary pb-6">
+      <header className="border-b-2 border-rule pb-6">
         <div className="flex flex-wrap items-center gap-2">
           {story.state === "developing" ? <Badge tone="press">Developing</Badge> : null}
           <p className="kicker text-text-tertiary">{kickerOf(story)}</p>

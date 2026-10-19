@@ -1,0 +1,134 @@
+/*
+ * What a palette does that a token value cannot say: a gradient rule, light
+ * drifting behind the page, a headline that catches it. Colour still comes
+ * only from tokens -- every value here is a var() of one -- so a palette's
+ * look and its contrast are measured from src/styles/themes/*.ts alone.
+ *
+ * Most of a palette's character -- rules, cards, the hover lift -- is in its
+ * generated style tokens, so a preview card of a palette draws it too. What is
+ * here is keyed on the page's palette on <html>: the light behind the whole
+ * page, and the sheen and the press that only make sense full-size. A
+ * treatment is never keyed on the mode: Aurora at night is the same idea as
+ * Aurora by day, in other values.
+ *
+ * MOTION RULES, in every palette:
+ *   - Entrance motion lives inside (prefers-reduced-motion: no-preference) and
+ *     never under [data-motion="reduce"]: a starting state the kill switch
+ *     cannot undo would leave content invisible.
+ *   - Anything that loops carries .ambient, so Calm stops it (tokens.css).
+ *   - Ambient motion moves only transform and opacity, on its own layer, so it
+ *     costs the compositor and not layout; and it is slow -- 30s and up -- so
+ *     it reads as light, not as something to look at.
+ */
+
+/* ------------------------------------------------------------- atmosphere */
+/*
+ * The light behind the page. Mounted once in the root layout, behind
+ * everything (z-index -1 in the root stacking context, above the canvas the
+ * body paints). Off unless a palette turns it on; off in high contrast, where
+ * a glow under text is exactly what is being removed.
+ */
+.atmosphere {
+  display: none;
+}
+:root[data-palette="aurora"]:not([data-contrast]) .atmosphere,
+:root:not([data-palette]) .atmosphere {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: var(--atmosphere-opacity);
+  contain: strict;
+}
+.atmosphere-orb {
+  position: absolute;
+  width: 62vmax;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  filter: blur(64px);
+  will-change: transform;
+}
+.atmosphere-orb:nth-child(1) {
+  top: -24vmax;
+  left: -14vmax;
+  background: radial-gradient(circle at center, var(--glow-1), transparent 66%);
+}
+.atmosphere-orb:nth-child(2) {
+  top: 18vh;
+  right: -24vmax;
+  background: radial-gradient(circle at center, var(--glow-2), transparent 66%);
+}
+.atmosphere-orb:nth-child(3) {
+  bottom: -30vmax;
+  left: 22vw;
+  background: radial-gradient(circle at center, var(--glow-3), transparent 66%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion]) .atmosphere-orb:nth-child(1) { animation: orb-drift-a 38s ease-in-out infinite alternate; }
+  :root:not([data-motion]) .atmosphere-orb:nth-child(2) { animation: orb-drift-b 46s ease-in-out infinite alternate; }
+  :root:not([data-motion]) .atmosphere-orb:nth-child(3) { animation: orb-drift-c 54s ease-in-out infinite alternate; }
+}
+@keyframes orb-drift-a {
+  to { transform: translate3d(14vw, 10vh, 0) scale(1.12); }
+}
+@keyframes orb-drift-b {
+  to { transform: translate3d(-12vw, 14vh, 0) scale(0.9); }
+}
+@keyframes orb-drift-c {
+  to { transform: translate3d(-10vw, -12vh, 0) scale(1.08); }
+}
+
+/* ------------------------------------------------------------------ aurora */
+
+/*
+ * A headline that catches the light: ink running into the accent and its
+ * second hue. Both hues are held to text contrast on the canvas by
+ * check:contrast, so every letter of the gradient is readable. Plain ink in a
+ * palette with no light, and in forced colours, where a transparent fill with
+ * a clipped background would vanish. No base rule: unlayered, it would beat
+ * the element's own text-* utility in every other palette.
+ */
+:root[data-palette="aurora"]:not([data-contrast]) .text-sheen,
+:root:not([data-palette]) .text-sheen {
+  background: linear-gradient(100deg, var(--text-primary) 0%, var(--text-primary) 35%, var(--accent) 70%, var(--accent-2) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-palette="aurora"]:not([data-motion]):not([data-contrast]) .text-sheen,
+  :root:not([data-palette]):not([data-motion]) .text-sheen {
+    animation: sheen 9s var(--ease-in-out) infinite alternate;
+  }
+}
+@keyframes sheen {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+@media (forced-colors: active) {
+  .text-sheen {
+    background: none !important;
+    color: CanvasText !important;
+  }
+}
+
+/* --------------------------------------------------------------- newspaper */
+
+/*
+ * The press: the masthead's rules are drawn across when a page is printed,
+ * once, left to right, as a line of ink would be.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-palette="newspaper"]:not([data-motion="reduce"]) .rule-double,
+  :root[data-palette="newspaper"]:not([data-motion="reduce"]) .rule-thick {
+    transform-origin: left center;
+    animation: rule-draw var(--dur-slow) var(--ease-out) both;
+  }
+}
+@keyframes rule-draw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}

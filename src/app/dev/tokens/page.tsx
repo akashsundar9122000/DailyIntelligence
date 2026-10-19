@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { Logo } from "@/components/branding/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PalettePicker } from "@/components/ui/palette-picker";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import { devToolsEnabled } from "@/lib/env";
@@ -35,7 +36,14 @@ const ACCENTS = [
   { name: "accent-hover", swatch: "bg-accent-hover" },
   { name: "accent-subtle", swatch: "bg-accent-subtle" },
   { name: "accent-border", swatch: "bg-accent-border" },
+  { name: "accent-2", swatch: "bg-accent-2" },
   { name: "ink", swatch: "bg-ink" },
+];
+
+const GLOWS = [
+  { name: "glow-1", swatch: "bg-glow-1" },
+  { name: "glow-2", swatch: "bg-glow-2" },
+  { name: "glow-3", swatch: "bg-glow-3" },
 ];
 
 const SIGNALS = [
@@ -67,6 +75,7 @@ const COLUMNS = {
   five: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5",
   six: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6",
   four: "grid-cols-2 lg:grid-cols-4",
+  three: "grid-cols-3",
 } as const;
 
 function Swatches({ items, columns = "five" }: { items: { name: string; swatch: string }[]; columns?: keyof typeof COLUMNS }) {
@@ -107,8 +116,8 @@ export default async function TokensPage() {
           <Logo />
           <h1 className="text-3xl font-semibold text-text-primary">Design tokens</h1>
           <p className="max-w-[60ch] text-sm text-text-secondary">
-            The design reference. Every colour in the product resolves through one of these names, in each
-            of the three themes and the night band.
+            The design reference. Every colour in the product resolves through one of these names, in every
+            theme by day and by night, with and without high contrast, and in the night band.
           </p>
         </div>
         <ThemeSwitcher />
@@ -133,11 +142,19 @@ export default async function TokensPage() {
         </div>
       </Section>
 
-      <Section title="Accent (ink)">
-        <Swatches items={ACCENTS} />
+      <Section title="Theme">
+        <PalettePicker />
       </Section>
 
-      <Section title="The spot colour" note="Press red means breaking, live, or something is wrong, and nothing else. Every other emphasis is ink: weight, rules and type.">
+      <Section title="Accent">
+        <Swatches items={ACCENTS} columns="six" />
+      </Section>
+
+      <Section title="Light" note="The glows behind a theme's atmosphere and its card shadows. Never behind text without a surface between.">
+        <Swatches items={GLOWS} columns="three" />
+      </Section>
+
+      <Section title="The alert colour" note="Reserved in every theme: breaking, live, or something is wrong, and nothing else. It is kept visibly apart from the accent.">
         <Swatches items={SIGNALS} columns="four" />
         <div className="flex flex-wrap items-center gap-3">
           <Badge tone="press">Breaking</Badge>
@@ -173,7 +190,7 @@ export default async function TokensPage() {
 
       <Section
         title="Chart series"
-        note="Ink steps and the spot colour. Never told apart by shade alone: every series also has a dash pattern or a direct label."
+        note="The theme's series colours (ink steps in Newspaper). Never told apart by colour alone: every series also has a dash pattern or a direct label."
       >
         <Swatches items={CHARTS} columns="four" />
       </Section>

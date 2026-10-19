@@ -113,7 +113,7 @@ describe("deleting an account", () => {
 
   it("removes the account and every record that belonged to it", async () => {
     const { email, userId, cookie } = await createVerifiedUser();
-    await updatePreferences(userId, { theme: "dark" });
+    await updatePreferences(userId, { mode: "dark" });
     // One of each kind of reader record, written as the reader.
     await withUser(userId, async (tx) => {
       await tx.execute(sql`insert into user_interests (id, user_id, kind, value, label) values (gen_random_uuid(), ${userId}::uuid, 'category', 'ai', 'AI')`);

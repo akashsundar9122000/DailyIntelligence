@@ -34,7 +34,7 @@ export function SectionPage({ href }: { href: string }) {
             ))}
           </ol>
         </div>
-        <aside className="h-fit border-t-2 border-text-primary pt-3">
+        <aside className="h-fit border-t-2 border-rule pt-3">
           <p className="kicker text-text-tertiary">Goes to press</p>
           <p className="mt-1 font-display text-3xl font-bold">Phase {plan.phase}</p>
           <p className="mt-2 text-sm text-text-secondary">This page shows no stories until the section is built. Nothing here is sample news.</p>

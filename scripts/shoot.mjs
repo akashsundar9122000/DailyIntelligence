@@ -2,14 +2,14 @@
 /**
  * Look at the screen.
  *
- * Captures each route in light and dark at desktop and phone width from a
- * PRODUCTION build, into shots/ (ignored by git). Contrast arithmetic says
+ * Captures each route in every palette, by day and by night, at desktop and
+ * phone width from a PRODUCTION build, into shots/ (ignored by git). Contrast arithmetic says
  * nothing about whether a page reads well, and a layout can pass every
  * assertion and still be ugly -- so a person reads these before a screen is
  * called done.
  *
  *   pnpm build && node scripts/shoot.mjs / /dev/tokens
- *   SHOOT_THEMES=light,dark,contrast node scripts/shoot.mjs /dev/tokens
+ *   SHOOT_PALETTES=newspaper SHOOT_THEMES=light,dark-contrast node scripts/shoot.mjs /dev/tokens
  *   SHOOT_SIGNED_IN=1 node scripts/shoot.mjs /app /app/settings/appearance
  *   SHOOT_SIGNED_IN=1 SHOOT_CLICK="Play the cards" SHOOT_WAIT=1500 node scripts/shoot.mjs /app/story/<id>
  *
@@ -17,14 +17,19 @@
  * through the real sign-up pages the first time and signed in to afterwards.
  */
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
 import { config as loadEnv } from "dotenv";
 
 const PORT = Number(process.env.SHOOT_PORT ?? 4630);
 const BASE = `http://127.0.0.1:${PORT}`;
 const ROUTES = process.argv.slice(2);
+/** "light", "dark", "light-contrast" or "dark-contrast". */
 const THEMES = (process.env.SHOOT_THEMES ?? "light,dark").split(",");
+// Every offered palette by default, read from the vocabulary itself so a new
+// palette is photographed without anyone remembering to add it here.
+const OFFERED = JSON.parse(/PALETTES = (\[[^\]]*\])/.exec(readFileSync("src/lib/design/palettes.ts", "utf8"))[1]);
+const PALETTES = process.env.SHOOT_PALETTES && process.env.SHOOT_PALETTES !== "all" ? process.env.SHOOT_PALETTES.split(",") : OFFERED;
 // SHOOT_HEIGHT: the signed-in shell scrolls inside itself, so a full-page
 // capture is one viewport tall. A taller viewport is how the rest is seen.
 const HEIGHT = Number(process.env.SHOOT_HEIGHT ?? 0);
@@ -118,24 +123,53 @@ async function signedInState(browser) {
   return state;
 }
 
+/** Choose a look in Settings, then wait until the page wears it -- the save is what later pages read. */
+async function chooseLook(page, palette, mode, contrast) {
+  await page.goto(`${BASE}/app/settings/appearance`, { waitUntil: "load" });
+  const name = palette[0].toUpperCase() + palette.slice(1);
+  await page.locator("label").filter({ has: page.getByRole("radio", { name: new RegExp(name) }) }).click();
+  await page.locator("label").filter({ hasText: mode === "dark" ? "Night" : "Day" }).first().click();
+  const toggle = page.getByRole("switch", { name: "High contrast" });
+  if ((await toggle.getAttribute("aria-checked")) !== String(contrast)) await toggle.click();
+  const html = page.locator("html");
+  await html.evaluate((el, [p, m]) => new Promise((resolve) => {
+    const done = () => el.dataset.palette === p && el.dataset.theme === m;
+    if (done()) return resolve();
+    new MutationObserver((_, obs) => { if (done()) { obs.disconnect(); resolve(); } }).observe(el, { attributes: true });
+  }), [palette, mode]);
+  // The save is debounced; let it land before the next page is read.
+  await page.waitForTimeout(800);
+}
+
 try {
   await waitForServer(BASE);
   const browser = await chromium.launch();
   const storageState = process.env.SHOOT_SIGNED_IN ? await signedInState(browser) : undefined;
 
   for (const viewport of VIEWPORTS) {
+    for (const palette of PALETTES) {
     for (const theme of THEMES) {
+      const [mode, contrast] = theme.split("-");
       const context = await browser.newContext({
         viewport: { width: viewport.width, height: viewport.height },
         deviceScaleFactor: viewport.name === "phone" ? 2 : 1,
         reducedMotion: "reduce",
         storageState,
-        // Signed in, the theme is the account's saved preference ("match
-        // device" for the screenshot account), so the device is what decides.
-        colorScheme: theme === "dark" ? "dark" : "light",
+        colorScheme: mode === "dark" ? "dark" : "light",
       });
-      await context.addInitScript((value) => localStorage.setItem("app-theme", value), theme);
+      await context.addInitScript(
+        ([p, m, c]) => {
+          localStorage.setItem("app-palette", p);
+          localStorage.setItem("app-mode", m);
+          if (c) localStorage.setItem("app-contrast", "more");
+          else localStorage.removeItem("app-contrast");
+        },
+        [palette, mode, contrast === "contrast"],
+      );
       const page = await context.newPage();
+      // Signed in, the account's saved look wins once the page hydrates, so it
+      // is set the way a reader sets it: in Settings.
+      if (storageState) await chooseLook(page, palette, mode, contrast === "contrast");
 
       for (const route of ROUTES) {
         const response = await page.goto(`${BASE}${route}`, { waitUntil: "load" });
@@ -154,11 +188,12 @@ try {
         // SHOOT_WAIT=4000: give embeds (frames that load from another site) time to draw.
         if (process.env.SHOOT_WAIT) await page.waitForTimeout(Number(process.env.SHOOT_WAIT));
         const slug = route === "/" ? "home" : route.replace(/^\//, "").replace(/[/?&=,]/g, "-");
-        const file = `shots/${slug}-${theme}-${viewport.name}.png`;
+        const file = `shots/${slug}-${palette}-${theme}-${viewport.name}.png`;
         await page.screenshot({ path: file, fullPage: true });
         written.push(file);
       }
       await context.close();
+    }
     }
   }
   await browser.close();

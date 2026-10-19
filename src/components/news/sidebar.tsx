@@ -45,7 +45,7 @@ export function HotColumn({ stories, now }: { stories: CardStory[]; now: Date })
 export function BriefingColumn({ entries }: { entries: { story: CardStory; reason?: string }[] }) {
   if (entries.length === 0) return null;
   return (
-    <section aria-labelledby="briefing-column" className="border border-border-strong border-t-[3px] border-t-text-primary bg-surface p-4">
+    <section aria-labelledby="briefing-column" className="border border-border-strong border-t-[3px] border-t-rule bg-surface p-4">
       <p className="kicker text-text-tertiary">Your briefing</p>
       <h2 id="briefing-column" className="text-xl font-bold">
         {entries.length} stories · about {entries.length} minutes

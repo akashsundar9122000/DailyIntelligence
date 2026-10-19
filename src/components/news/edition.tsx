@@ -11,7 +11,7 @@ export type Placed = { story: CardStory; reason?: string; discovery?: boolean };
 /** A section's head on a page: a thick rule, a kicker, a title, and an optional "see all". */
 export function SectionHead({ kicker, title, href, linkLabel = "See all", id }: { kicker?: string; title: string; href?: string; linkLabel?: string; id?: string }) {
   return (
-    <div className="flex items-end justify-between gap-4 border-t-2 border-text-primary pt-2.5">
+    <div className="flex items-end justify-between gap-4 border-t-2 border-rule pt-2.5">
       <div>
         {kicker ? <p className="kicker text-text-tertiary">{kicker}</p> : null}
         <h2 id={id} className="text-2xl font-bold leading-tight">

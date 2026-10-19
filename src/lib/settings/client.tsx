@@ -4,7 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { toast } from "@/components/ui/toast";
 import { savePreferencesAction } from "@/lib/actions/preferences";
-import { setThemePreference } from "@/lib/design/theme";
+import { setContrast, setPalette, setThemePreference } from "@/lib/design/theme";
+import { withLookTransition } from "@/lib/design/transition";
 
 import { applyAppearance, PREFERENCES_STORAGE_KEY } from "./apply";
 import type { Preferences } from "./preferences";
@@ -18,14 +19,33 @@ type Store = {
 
 const PreferencesContext = createContext<Store | null>(null);
 
-function applyAll(preferences: Preferences): void {
-  applyAppearance(preferences);
-  setThemePreference(preferences.theme);
+/** The keys that change how the whole page looks, and so are worth a transition. */
+const LOOK_KEYS = ["palette", "mode", "contrast"] as const satisfies readonly (keyof Preferences)[];
+type Look = Partial<Pick<Preferences, (typeof LOOK_KEYS)[number]>>;
+
+/**
+ * Only what differs, so a save confirmed by the server -- which re-applies
+ * everything -- writes nothing and announces nothing when nothing changed.
+ */
+function applyLook(look: Look): void {
+  const root = document.documentElement;
+  if (look.palette !== undefined && root.dataset.palette !== look.palette) setPalette(look.palette);
+  if (look.mode !== undefined && (root.dataset.themePref ?? "system") !== look.mode) setThemePreference(look.mode);
+  if (look.contrast !== undefined && (root.dataset.contrast === "more") !== look.contrast) setContrast(look.contrast);
+}
+
+function cache(preferences: Preferences): void {
   try {
     localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
   } catch {
     // Private browsing: they apply for this visit and are fetched again next time.
   }
+}
+
+function applyAll(preferences: Preferences): void {
+  applyAppearance(preferences);
+  applyLook(preferences);
+  cache(preferences);
 }
 
 const SAVE_DELAY_MS = 250;
@@ -98,9 +118,17 @@ export function PreferencesProvider({ initial, children }: { initial: Preference
     (patch: Partial<Preferences>) => {
       setPreferences((current) => {
         const next = { ...current, ...patch };
-        applyAll(next);
+        applyAppearance(next);
+        cache(next);
         return next;
       });
+      // A new look is shown with a transition; the reader asked for it. Applied
+      // here and not in the updater above: React may run an updater twice, and
+      // a look applied during render would be on screen before the transition
+      // took its "before" picture, leaving nothing to animate. Text size and
+      // density apply at once -- animating a reflow only blurs it.
+      const look = Object.fromEntries(LOOK_KEYS.filter((key) => key in patch).map((key) => [key, patch[key]])) as Look;
+      if (Object.keys(look).length > 0) withLookTransition(() => applyLook(look));
       pending.current = { ...pending.current, ...patch };
       if (timer.current !== null) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(() => void flush(), SAVE_DELAY_MS);

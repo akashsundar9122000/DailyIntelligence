@@ -98,14 +98,34 @@ e2e/                  Playwright: tests/ (desktop, Pixel 7, reduced motion, axe)
   is connected only after its terms are read and quoted in the catalogue.
 - **Heat is not confidence.** Two scores, stored with their components and a
   version, shown side by side. Nothing may combine them into one number.
-- **Newsprint: one spot colour.** Press red means breaking, live or wrong, and
-  nothing else. Everything else is ink, told apart by weight, rule and icon.
-  Colour only through tokens: no hex, `rgb()`, named colours or Tailwind
-  palette classes under `src/` (`check:tokens`). The two exceptions, each named
-  in its ALLOW list with the reason, are the mail template and the OG image.
-- **Every theme block declares the full token set; dark is written three
-  times** (media query, `[data-theme="dark"]`, `[data-surface="night"]`).
-  `check:contrast` measures 180 pairs and fails on drift between the copies.
+- **Themes are palettes, and the alert colour is reserved in every one.**
+  `data-palette` (Aurora, the default, and Newspaper), `data-theme` (light or
+  dark, always concrete) and `data-contrast="more"` are three independent
+  attributes. Accents, gradients and status hues are free; the `press` tokens
+  mean breaking, live or wrong and nothing else, and `check:contrast` holds them
+  visibly apart from the accent. Colour only through tokens: no hex, `rgb()`,
+  named colours or Tailwind palette classes under `src/` (`check:tokens`). The
+  two exceptions, each named in its ALLOW list with the reason, are the mail
+  template and the OG image.
+- **Colour values live only in `src/styles/themes/*.ts`.** `pnpm themes`
+  generates `src/styles/themes.generated.css` (committed); `check:themes` fails
+  if it is stale or hand-edited. Every palette fills every colour and style
+  token for both modes. `check:contrast` measures the sources in every palette
+  × mode × contrast -- including text over the atmosphere's light and on glass,
+  composited at the palette's own opacities -- and fails on a colour literal in
+  `tokens.css` or `palettes.css`. A palette's look belongs in its tokens (so a
+  `[data-preview-palette]` card draws it); `palettes.css` keeps only what must
+  be keyed on the page's palette.
+- **A preference saved before palettes is read, never written.** A stored
+  `theme` (or `localStorage["app-theme"]`) of light/dark/contrast means
+  Newspaper in that mode; the next save writes `palette`/`mode`/`contrast` and
+  drops it. The day/night key is `mode`, never `theme`, so the two cannot be
+  confused.
+- **Motion: Full, Calm, Reduced.** The OS reduced-motion setting always wins.
+  Anything that loops carries `.ambient` (Calm stops it); entrance states live
+  inside `(prefers-reduced-motion: no-preference)`; a change of look goes through
+  `withLookTransition()`, which never makes the change conditional on the
+  animation.
 - **The product name lives in `src/config/brand.ts`.** `check:guards` fails if
   it is typed anywhere else under `src/`.
 - **Class names are written out in full.** Tailwind scans source text; a class

@@ -32,7 +32,7 @@ export function DayNumbers({ day }: { day: DayInNumbers }) {
   ];
   return (
     <div className="space-y-5">
-      <dl className="grid grid-cols-2 gap-0 border-t-2 border-text-primary sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-0 border-t-2 border-rule sm:grid-cols-4">
         {figures.map(([label, value, note]) => (
           <div key={label} className="border-b border-r border-border p-4 last:border-r-0">
             <dt className="kicker text-text-tertiary">{label}</dt>

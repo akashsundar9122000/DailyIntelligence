@@ -5,7 +5,8 @@ export const PREFERENCES_STORAGE_KEY = "app-prefs";
 
 /**
  * Put the appearance preferences on <html>. CSS does the rest, through
- * attribute selectors in tokens.css. The theme is handled by lib/design/theme.
+ * attribute selectors in tokens.css. The palette, mode and contrast are
+ * handled by lib/design/theme, which also keeps them for signed-out pages.
  */
 export function applyAppearance(preferences: Pick<Preferences, "density" | "textSize" | "motion">): void {
   const root = document.documentElement;
@@ -27,5 +28,5 @@ export const appearanceScript = `(function(){try{
 var p=JSON.parse(localStorage.getItem('${PREFERENCES_STORAGE_KEY}')||'{}'),d=document.documentElement;
 if(p.density==='compact')d.dataset.density='compact';
 if([90,112,125].indexOf(p.textSize)>-1)d.dataset.textSize=String(p.textSize);
-if(p.motion==='reduce')d.dataset.motion='reduce';
+if(p.motion==='reduce'||p.motion==='calm')d.dataset.motion=p.motion;
 }catch(e){}})();`;

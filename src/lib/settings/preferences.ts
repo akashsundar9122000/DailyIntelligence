@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { NAV_ITEMS } from "@/config/navigation";
+import { DEFAULT_PALETTE, LEGACY_PALETTE, PALETTES } from "@/lib/design/palettes";
 import { THEMES } from "@/lib/design/theme-script";
 
 /**
@@ -18,8 +19,12 @@ import { THEMES } from "@/lib/design/theme-script";
  */
 export const TEXT_SIZES = [90, 100, 112, 125] as const;
 export const DENSITIES = ["comfortable", "compact"] as const;
-/** "system" follows the OS; "reduce" turns motion down whatever the OS says. */
-export const MOTION = ["system", "reduce"] as const;
+/**
+ * "system" is Full motion, unless the OS asks for less -- the OS setting always
+ * wins. "calm" keeps transitions and stops anything that moves on its own;
+ * "reduce" stills everything, whatever the OS says.
+ */
+export const MOTION = ["system", "calm", "reduce"] as const;
 /** How long an explainer is by default. The reader can switch on any story. */
 export const READING_STYLES = ["concise", "balanced", "deep"] as const;
 export type ReadingStyle = (typeof READING_STYLES)[number];
@@ -30,7 +35,16 @@ export const LANGUAGES = ["en"] as const;
 const LANDING_PAGES = NAV_ITEMS.filter((item) => item.landing).map((item) => item.href);
 
 export const preferencesSchema = z.object({
-  theme: z.enum(["system", ...THEMES]),
+  /** The look. */
+  palette: z.enum(PALETTES),
+  /**
+   * Day, night or match the device. Called `mode`, not `theme`: a stored
+   * `theme` is the vocabulary from before palettes, and keeping the new key
+   * distinct is what lets resolvePreferences() tell the two apart (below).
+   */
+  mode: z.enum(["system", ...THEMES]),
+  /** High contrast, over any palette and mode. */
+  contrast: z.boolean(),
   textSize: z.union([z.literal(90), z.literal(100), z.literal(112), z.literal(125)]),
   density: z.enum(DENSITIES),
   motion: z.enum(MOTION),
@@ -56,7 +70,9 @@ export type Preferences = z.infer<typeof preferencesSchema>;
 export type PreferenceKey = keyof Preferences;
 
 export const DEFAULT_PREFERENCES: Preferences = {
-  theme: "system",
+  palette: DEFAULT_PALETTE,
+  mode: "system",
+  contrast: false,
   textSize: 100,
   density: "comfortable",
   motion: "system",
@@ -77,9 +93,21 @@ export const LANDING_PAGE_OPTIONS = NAV_ITEMS.filter((item) => item.landing).map
  * Stored values over defaults. Anything stored that no longer validates -- a
  * value from an option since removed -- falls back to its default, key by key,
  * rather than failing the whole read.
+ *
+ * A stored `theme` is from before palettes: "light", "dark" or "contrast",
+ * each chosen in the Newspaper look. The reader keeps Newspaper in that mode
+ * (and with high contrast, for "contrast") instead of being moved to the new
+ * default. The next save writes the new keys and drops `theme`, because
+ * sparsePreferences() writes only keys the schema knows.
  */
 export function resolvePreferences(stored: unknown): Preferences {
-  const input = stored && typeof stored === "object" ? (stored as Record<string, unknown>) : {};
+  const input = stored && typeof stored === "object" ? { ...(stored as Record<string, unknown>) } : {};
+  const legacy = input.theme;
+  if (legacy === "light" || legacy === "dark" || legacy === "contrast") {
+    if (!("palette" in input)) input.palette = LEGACY_PALETTE;
+    if (!("mode" in input)) input.mode = legacy === "contrast" ? "light" : legacy;
+    if (!("contrast" in input) && legacy === "contrast") input.contrast = true;
+  }
   const resolved: Record<string, unknown> = { ...DEFAULT_PREFERENCES };
   for (const key of Object.keys(DEFAULT_PREFERENCES) as PreferenceKey[]) {
     if (!(key in input)) continue;

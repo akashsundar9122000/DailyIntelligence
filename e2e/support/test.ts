@@ -1,5 +1,7 @@
 import { test as base, type Page } from "@playwright/test";
 
+import { DEFAULT_PALETTE, PALETTES, type Palette } from "../../src/lib/design/palettes";
+
 /**
  * The project's `test`. Import it from HERE, never from "@playwright/test", or
  * the next call site gets the old behaviour back.
@@ -25,4 +27,34 @@ export { expect } from "@playwright/test";
 /** Every route a signed-out visitor can reach. Hand-maintained: add new routes here. */
 export const PUBLIC_ROUTES = ["/", "/sources", "/status", "/ai-policy", "/privacy", "/terms", "/login", "/dev/tokens", "/dev/outbox"] as const;
 
-export const THEMES = ["light", "dark", "contrast"] as const;
+/*
+ * Every look a reader can choose: each palette, by day and by night, with and
+ * without high contrast. Read from the vocabulary itself, so a palette added
+ * there is measured here without anyone remembering to list it.
+ */
+
+export type Look = { palette: Palette; mode: "light" | "dark"; contrast: boolean };
+
+export const LOOKS: Look[] = PALETTES.flatMap((palette) =>
+  (["light", "dark"] as const).flatMap((mode) => [false, true].map((contrast) => ({ palette, mode, contrast }))),
+);
+
+/** The default palette by day and by night: the looks every other route is measured in. */
+export const DEFAULT_LOOKS: Look[] = LOOKS.filter((look) => look.palette === DEFAULT_PALETTE && !look.contrast);
+
+export function lookName({ palette, mode, contrast }: Look): string {
+  return `${palette} ${mode === "light" ? "day" : "night"}${contrast ? " with high contrast" : ""}`;
+}
+
+/** Wear a look before the page's own script runs, the way a returning visitor's browser does. */
+export async function wearLook(page: Page, { palette, mode, contrast }: Look): Promise<void> {
+  await page.addInitScript(
+    ([p, m, c]) => {
+      localStorage.setItem("app-palette", p as string);
+      localStorage.setItem("app-mode", m as string);
+      if (c) localStorage.setItem("app-contrast", "more");
+      else localStorage.removeItem("app-contrast");
+    },
+    [palette, mode, contrast] as const,
+  );
+}

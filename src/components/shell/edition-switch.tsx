@@ -17,7 +17,7 @@ import { SCOPES } from "@/lib/settings/preferences";
 export function EditionSwitch({ className }: { className?: string }) {
   const { preferences, update } = usePreferences();
   return (
-    <div role="radiogroup" aria-label="Edition" className={cn("inline-flex items-center border border-border-strong", className)}>
+    <div role="radiogroup" aria-label="Edition" className={cn("inline-flex items-center overflow-hidden rounded-md border border-border-strong", className)}>
       {SCOPES.map((scope) => {
         const chosen = preferences.defaultScope === scope;
         return (

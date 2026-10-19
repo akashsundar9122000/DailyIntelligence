@@ -31,10 +31,12 @@
     "check:provenance": "node scripts/check-provenance.mjs",
     "check:budget": "node scripts/check-budget.mjs",
     "check:no-todo": "node scripts/check-no-todo.mjs",
-    "check": "pnpm check:secrets && pnpm check:tokens && pnpm check:layout && pnpm check:contrast && pnpm check:guards && pnpm check:provenance && pnpm typecheck && pnpm lint && pnpm test:unit && pnpm test:components",
+    "check": "pnpm check:secrets && pnpm check:tokens && pnpm check:themes && pnpm check:layout && pnpm check:contrast && pnpm check:guards && pnpm check:provenance && pnpm typecheck && pnpm lint && pnpm test:unit && pnpm test:components",
     "verify": "pnpm check && pnpm test:integration && pnpm build && E2E_SKIP_BUILD=1 pnpm test:e2e && pnpm check:budget && pnpm check:no-todo",
     "test:smoke": "playwright test --config playwright.smoke.config.ts",
-    "docs:sources": "tsx scripts/docs-sources.mts"
+    "docs:sources": "tsx scripts/docs-sources.mts",
+    "themes": "tsx scripts/build-themes.mts",
+    "check:themes": "tsx scripts/build-themes.mts --check"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

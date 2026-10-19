@@ -33,7 +33,7 @@ const COLUMNS = [
 /** The colophon: who made the paper, what it is set in, and where the fine print is. */
 export function SiteFooter() {
   return (
-    <footer className="border-t-[3px] border-text-primary bg-canvas px-4 pb-[calc(var(--safe-bottom)+2.5rem)] pt-10 sm:px-6">
+    <footer className="border-t-[3px] border-rule bg-canvas px-4 pb-[calc(var(--safe-bottom)+2.5rem)] pt-10 sm:px-6">
       <div className="mx-auto grid max-w-[var(--container)] gap-10 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
         <div className="space-y-3">
           <Link href="/" className="inline-flex items-center gap-2.5" aria-label={`${brand.name}, home`}>

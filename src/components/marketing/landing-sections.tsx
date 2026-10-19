@@ -18,7 +18,7 @@ export function SourceTicker({ names }: { names: string[] }) {
   if (names.length === 0) return null;
   const line = names.join("  ·  ");
   return (
-    <div className="overflow-hidden border-y-2 border-text-primary bg-ink py-2.5 text-on-ink" aria-label="Sources on the press">
+    <div className="overflow-hidden border-y-2 border-rule bg-ink py-2.5 text-on-ink" aria-label="Sources on the press">
       <div className="ticker flex w-max gap-12 whitespace-nowrap">
         {/* Two copies, so the loop has no gap; the second is hidden from screen readers. */}
         <p className="kicker text-on-ink">
@@ -41,7 +41,7 @@ function Dial({ label, value, verdict, lines, press }: { label: string; value: n
   const radius = 80;
   const length = Math.PI * radius;
   return (
-    <div className="border-t-2 border-text-primary pt-4">
+    <div className="border-t-2 border-rule pt-4">
       <p className="kicker text-text-secondary">{label}</p>
       <div className="mt-4 flex items-end gap-6">
         <svg viewBox="0 0 200 110" className="w-44 shrink-0 sm:w-52" role="img" aria-label={`${label}: ${value} out of 100, ${verdict}`}>
@@ -79,7 +79,7 @@ export function HotIsNotTrue() {
   return (
     <section id="hot-is-not-true" aria-labelledby="hot-is-not-true-title" data-surface="night" className="scroll-mt-20 px-4 py-20 sm:px-6 lg:py-28">
       <div className="mx-auto max-w-[var(--container)]">
-        <div data-reveal className="grid gap-6 border-t-[3px] border-text-primary pt-4 lg:grid-cols-2 lg:items-end">
+        <div data-reveal className="grid gap-6 border-t-[3px] border-rule pt-4 lg:grid-cols-2 lg:items-end">
           <div>
             <p className="kicker text-text-tertiary">The rule we print by</p>
             <h2 id="hot-is-not-true-title" className="mt-2 text-[clamp(2.5rem,6vw,5rem)] font-bold leading-[0.98]">
@@ -246,7 +246,7 @@ export function Questions() {
 
 export function ClosingBand() {
   return (
-    <section aria-labelledby="closing-title" className="border-y-[3px] border-text-primary px-4 py-20 sm:px-6 lg:py-28">
+    <section aria-labelledby="closing-title" className="border-y-[3px] border-rule px-4 py-20 sm:px-6 lg:py-28">
       <div data-reveal className="mx-auto max-w-4xl text-center">
         <p className="kicker text-text-tertiary">The next edition is already being set</p>
         <h2 id="closing-title" className="mt-3 text-[clamp(2.5rem,6vw,4.75rem)] font-bold leading-[1.02]">

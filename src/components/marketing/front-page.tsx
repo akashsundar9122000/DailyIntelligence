@@ -15,7 +15,7 @@ import type { FrontPageHeadline } from "@/lib/queries/front-page";
  */
 export function LiveFrontPage({ headlines, now, onPress }: { headlines: FrontPageHeadline[]; now: Date; onPress: string[] }) {
   return (
-    <aside aria-labelledby="live-front-page" className="flex h-full flex-col border-t-[3px] border-text-primary pt-3">
+    <aside aria-labelledby="live-front-page" className="flex h-full flex-col border-t-[3px] border-rule pt-3">
       <div className="flex items-center justify-between gap-3">
         <h2 id="live-front-page" className="kicker text-text-primary">
           The front page, live

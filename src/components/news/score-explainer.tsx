@@ -16,7 +16,7 @@ const CONFIDENCE_PARTS: Record<string, string> = {
 function Bars({ title, total, parts, labels, press }: { title: string; total: number; parts: Record<string, number>; labels: Record<string, string>; press?: boolean }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-baseline justify-between border-b-2 border-text-primary pb-1.5">
+      <div className="flex items-baseline justify-between border-b-2 border-rule pb-1.5">
         <p className="kicker text-text-primary">{title}</p>
         <p className="font-display text-3xl font-black tabular-nums">{total}</p>
       </div>

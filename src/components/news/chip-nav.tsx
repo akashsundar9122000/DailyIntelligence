@@ -20,7 +20,7 @@ export function ChipNav({ label, chips, className }: { label: string; chips: Chi
               aria-current={chip.current ? "page" : undefined}
               scroll={false}
               className={cn(
-                "inline-flex h-9 items-center border px-3.5 text-sm transition-colors coarse:h-11",
+                "inline-flex h-9 items-center rounded-md border px-3.5 text-sm transition-colors coarse:h-11",
                 chip.current ? "border-text-primary bg-ink font-semibold text-on-ink" : "border-border-strong text-text-secondary hover:bg-surface-hover hover:text-text-primary",
               )}
             >

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export function ProsePage({ kicker, title, lead, notice, children }: { kicker?: string; title: string; lead: string; notice?: string; children: ReactNode }) {
   return (
     <article className="mx-auto max-w-3xl px-4 py-14 sm:px-6 lg:py-20">
-      <div className="border-t-[3px] border-text-primary pt-4">
+      <div className="border-t-[3px] border-rule pt-4">
         {kicker ? <p className="kicker text-text-tertiary">{kicker}</p> : null}
         <h1 className="mt-2 text-5xl font-bold leading-[1.02] text-text-primary sm:text-6xl">{title}</h1>
         <p className="dek pt-5 text-xl leading-relaxed">{lead}</p>

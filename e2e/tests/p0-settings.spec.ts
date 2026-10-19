@@ -44,7 +44,7 @@ test.describe("settings", () => {
     // Put it back for the specs after this one.
     await choose(page, "Colour scheme", "Match device");
     await choose(page, "Text size", "Default");
-    await choose(page, "Motion", "Match device");
+    await choose(page, "Motion", "Full");
     await saved(page);
   });
 

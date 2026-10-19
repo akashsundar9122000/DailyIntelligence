@@ -73,7 +73,7 @@ export function StoryExplainer({
   const shown = SECTIONS.filter((section) => SHOWN[length].includes(section.key) && content[section.key].length > 0);
   return (
     <section aria-labelledby="explainer" className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-t-2 border-text-primary pt-2.5">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-t-2 border-rule pt-2.5">
         <div>
           <p className="kicker flex items-center gap-1.5 text-text-tertiary">
             <Sparkles className="size-3.5" aria-hidden /> AI-generated summary

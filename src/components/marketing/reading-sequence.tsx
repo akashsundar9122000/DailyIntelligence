@@ -110,7 +110,7 @@ function ScoreArt() {
 
 function ExplainArt() {
   return (
-    <div className="border border-border-strong border-t-2 border-t-text-primary bg-surface p-4">
+    <div className="border border-border-strong border-t-2 border-t-rule bg-surface p-4">
       <div className="flex items-center justify-between">
         <p className="kicker text-text-primary">In one minute</p>
         <span className="border border-current px-1.5 py-0.5 text-[0.625rem] font-bold uppercase tracking-[0.08em] text-text-secondary">AI-written</span>

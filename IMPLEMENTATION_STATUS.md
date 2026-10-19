@@ -318,3 +318,55 @@ Not done, and why:
   quotation marks, copied from an env file when the variables were first set,
   and Google answered `invalid_client`. Both Google values were set again
   without them; Google now shows its sign-in page for this site's callback.
+
+## Phase 6a: the theme engine, Aurora, Newspaper, Settings (2026-10-19)
+
+Built:
+
+- **Palettes, generated from one source.** Colour, type, corners, card treatment
+  and motion for each palette live in `src/styles/themes/*.ts`;
+  `scripts/build-themes.mts` writes `src/styles/themes.generated.css`
+  (committed), and the new `check:themes` gate step fails if it is stale. The
+  three hand-copied night blocks and their drift check are gone.
+- **Aurora is the default**: violet and teal light drifting behind frosted
+  cards and a glass frame, Bricolage Grotesque headlines, rounded corners and
+  a springier step. **Newspaper** is unchanged in look, with its masthead rules
+  now drawn across once on load.
+- **High contrast is a switch** over any palette and mode (7:1 text, no glass or
+  glow). **Motion is Full / Calm / Reduced**; Calm stops the drifting light and
+  the ticker, and the OS setting always wins.
+- **Settings > Appearance** chooses the theme from live preview cards (the real
+  tokens, through `[data-preview-palette]`), plus colour scheme, high contrast
+  and motion. Changes of look animate (a circle from the click, a crossfade
+  from the keyboard, nothing under Reduced).
+- **Existing readers keep their choice.** A stored `theme` of light, dark or
+  contrast (account or `localStorage`) resolves to Newspaper in that mode and is
+  rewritten in the new keys on the next save.
+
+Verified:
+
+- `check:contrast`: 418 pairs across 2 palettes × day/night × plain/high
+  contrast, including text over the atmosphere and on glass composited at each
+  palette's opacity, and the alert colour held apart from the accent (it was
+  180 pairs over 5 scopes).
+- e2e: 347 passed (4.8 min), including `p6-themes.spec.ts` on desktop and
+  mobile (each theme chosen in Settings and kept after reload, high contrast,
+  Calm, axe on `/app` and Settings in all 8 looks, the legacy visitor, the
+  header switch keeping the palette), the public axe matrix (every look on `/`,
+  `/login`, `/dev/tokens`; 72 runs, was 54) and the reduced-motion project.
+- Budget: shared 167 KB (unchanged), all chunks 433 KB (was 426 KB).
+- Screenshots read in both palettes, day and night, with and without contrast,
+  at 1440 and 390, signed out and signed in.
+
+Not green, and why:
+
+- `tests/integration/ai.test.ts` › "says the sources do not say…" fails, and
+  fails identically on a clean checkout of `6040540`, so it predates this phase.
+  Cause: `recordLine()` puts the publication time into each record's text, and
+  `checkClaims` counts its digits as support, so the invented "40 officials" is
+  accepted whenever the seeded item was published at :40. It is a real gap in
+  the validator, not only in the test. Not changed here: it is outside this
+  phase's scope and needs a decision.
+
+Not done yet (6b, 6c): Terminal, Blueprint and Studio; the landing page's
+animated hero, theme strip, scroll story and page transitions.

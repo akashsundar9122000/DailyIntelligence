@@ -11,6 +11,7 @@ import { cn } from "@/components/ui/cn";
 import { Dialog } from "@/components/ui/dialog";
 import { brand } from "@/config/brand";
 import { setThemePreference } from "@/lib/design/theme";
+import { withLookTransition } from "@/lib/design/transition";
 
 const LINKS = [
   { href: "/#how-it-works", label: "How it works" },
@@ -20,9 +21,10 @@ const LINKS = [
   { href: "/#questions", label: "Questions" },
 ];
 
-/** Day to night and back. The full list is in Settings once signed in. */
+/** Day to night and back, within the visitor's palette. The full list is in Settings once signed in. */
 function toggleTheme() {
-  setThemePreference(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  withLookTransition(() => setThemePreference(next));
 }
 
 /**
@@ -67,7 +69,7 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Switch between the day and night editions" title="Day or night">
+          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Switch between day and night" title="Day or night">
             <SunMoon className="size-4" aria-hidden />
           </Button>
           <Button variant="secondary" asChild className="hidden sm:inline-flex">

@@ -74,7 +74,7 @@ export default async function ForYouPage({ searchParams }: { searchParams: Promi
       />
 
       {!profile.onboardedAt ? (
-        <div className="flex flex-col gap-3 border-l-[3px] border-text-primary bg-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-l-[3px] border-rule bg-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-text-primary">
             <span className="font-semibold">Your edition is not set up yet.</span> Choose your sections and places, and this page starts ranking for you.
           </p>

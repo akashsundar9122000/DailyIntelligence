@@ -87,7 +87,7 @@ export default async function BriefingsPage({ searchParams }: { searchParams: Pr
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-0 lg:divide-x lg:divide-border-strong">
         <section aria-labelledby="edition-briefing" className="space-y-4 lg:pr-8">
-          <div className="border-t-2 border-text-primary pt-2.5">
+          <div className="border-t-2 border-rule pt-2.5">
             <p className="kicker flex items-center gap-1.5 text-text-tertiary">
               <Sparkles className="size-3.5" aria-hidden /> AI-generated briefing
             </p>

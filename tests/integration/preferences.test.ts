@@ -25,10 +25,39 @@ describe("preferences", () => {
 
   it("save a change, return what the row now holds, and store only the difference", async () => {
     const { userId } = await createVerifiedUser();
-    const result = await updatePreferences(userId, { theme: "dark", textSize: 112 });
-    expect(result).toEqual({ ...DEFAULT_PREFERENCES, theme: "dark", textSize: 112 });
+    const result = await updatePreferences(userId, { mode: "dark", textSize: 112 });
+    expect(result).toEqual({ ...DEFAULT_PREFERENCES, mode: "dark", textSize: 112 });
     // Read back from the table, independently of the function's return value.
+    expect(await storedFor(userId)).toEqual({ mode: "dark", textSize: 112 });
+  });
+
+  it("save a palette and high contrast, and keep Aurora unstored as the default it is", async () => {
+    const { userId } = await createVerifiedUser();
+    await updatePreferences(userId, { palette: "newspaper", contrast: true });
+    expect(await storedFor(userId)).toEqual({ palette: "newspaper", contrast: true });
+    await updatePreferences(userId, { palette: "aurora", contrast: false });
+    expect(await storedFor(userId)).toEqual({});
+  });
+
+  it("keep a reader who chose Night before themes existed on Newspaper, and rewrite the row in the new keys on their next save", async () => {
+    const { userId } = await createVerifiedUser();
+    await updatePreferences(userId, { textSize: 112 });
+    // Written as the table's owner: updatePreferences() only ever writes the
+    // new keys, and the system scope only reads this table -- an update
+    // through it changes nothing and says nothing.
+    const pg = (await import("pg")).default;
+    const owner = new pg.Client({ connectionString: process.env.DATABASE_URL_TEST_OWNER });
+    await owner.connect();
+    await owner.query(`update user_settings set preferences = '{"theme":"dark","textSize":112}'::jsonb where user_id = $1`, [userId]);
+    await owner.end();
+    // Read back, so the test proves it set up what it meant to.
     expect(await storedFor(userId)).toEqual({ theme: "dark", textSize: 112 });
+
+    expect(await getPreferences(userId)).toEqual({ ...DEFAULT_PREFERENCES, palette: "newspaper", mode: "dark", textSize: 112 });
+
+    await updatePreferences(userId, { density: "compact" });
+    // Read back: the legacy key is gone and their choice survives in the new ones.
+    expect(await storedFor(userId)).toEqual({ palette: "newspaper", mode: "dark", textSize: 112, density: "compact" });
   });
 
   it("merge a later change with an earlier one rather than replacing it", async () => {
@@ -49,25 +78,25 @@ describe("preferences", () => {
     // Without the row lock each would read the old object and the later write would undo the earlier.
     const { userId } = await createVerifiedUser();
     await Promise.all([
-      updatePreferences(userId, { theme: "dark" }),
+      updatePreferences(userId, { mode: "dark" }),
       updatePreferences(userId, { readingHistory: false }),
       updatePreferences(userId, { landingPage: "/app/hot" }),
     ]);
-    expect(await storedFor(userId)).toEqual({ theme: "dark", readingHistory: false, landingPage: "/app/hot" });
+    expect(await storedFor(userId)).toEqual({ mode: "dark", readingHistory: false, landingPage: "/app/hot" });
   });
 
   it("belong to one user: another cannot read or change them", async () => {
     const first = await createVerifiedUser();
     const second = await createVerifiedUser();
-    await updatePreferences(first.userId, { theme: "contrast" });
+    await updatePreferences(first.userId, { contrast: true });
 
     const seen = await withUser(second.userId, (tx) => execRows(tx, sql`select 1 from user_settings where user_id = ${first.userId}::uuid`));
     expect(seen).toEqual([]);
 
     await withUser(second.userId, (tx) =>
-      tx.execute(sql`update user_settings set preferences = '{"theme":"dark"}'::jsonb where user_id = ${first.userId}::uuid`),
+      tx.execute(sql`update user_settings set preferences = '{"mode":"dark"}'::jsonb where user_id = ${first.userId}::uuid`),
     );
-    expect(await storedFor(first.userId)).toEqual({ theme: "contrast" });
+    expect(await storedFor(first.userId)).toEqual({ contrast: true });
 
     await expect(
       withUser(second.userId, (tx) => tx.execute(sql`insert into user_settings (user_id, preferences) values (${first.userId}::uuid, '{}'::jsonb)`)),
@@ -76,7 +105,7 @@ describe("preferences", () => {
 
   it("are deleted with the account", async () => {
     const { userId } = await createVerifiedUser();
-    await updatePreferences(userId, { theme: "dark" });
+    await updatePreferences(userId, { mode: "dark" });
     const pg = (await import("pg")).default;
     const owner = new pg.Client({ connectionString: process.env.DATABASE_URL_TEST_OWNER });
     await owner.connect();
