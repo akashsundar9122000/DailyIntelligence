@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { E2E_ADMIN_EMAIL } from "../support/admin";
+import { openMenuTo } from "../support/menu";
 import { newEmail, signIn } from "../support/auth";
 import { SEED_STORIES } from "../support/seed";
 import { expect, test } from "../support/session";
@@ -135,7 +136,7 @@ test.describe("saved stories and collections", () => {
     await make.getByRole("button", { name: "Make collection" }).click();
     await expect(toastSaying(page, "Collection “Weekend” made.")).toBeVisible();
 
-    await saved.getByRole("button", { name: "Collections" }).click();
+    await openMenuTo(saved.getByRole("button", { name: "Collections" }), page.getByRole("menuitemcheckbox", { name: "Weekend" }));
     await page.getByRole("menuitemcheckbox", { name: "Weekend" }).click();
     await expect(toastSaying(page, "Added to Weekend.")).toBeVisible();
 

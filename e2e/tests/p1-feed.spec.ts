@@ -1,3 +1,4 @@
+import { openMenuTo } from "../support/menu";
 import { SEED_STORIES } from "../support/seed";
 import { expect, test } from "../support/session";
 
@@ -117,7 +118,7 @@ test.describe("one story", () => {
   test("can be reported, through a dialog that says a person reads it", async ({ page }) => {
     await page.goto("/app/categories/technology");
     await page.getByRole("link", { name: headline("chip") }).first().click();
-    await page.getByRole("button", { name: "More about this story" }).first().click();
+    await openMenuTo(page.getByRole("button", { name: "More about this story" }).first(), page.getByRole("menuitem", { name: "Report a problem" }));
     await page.getByRole("menuitem", { name: "Report a problem" }).click();
     const dialog = page.getByRole("dialog", { name: "Report this story" });
     await dialog.getByLabel("What is wrong").selectOption("wrong_category");
@@ -128,13 +129,13 @@ test.describe("one story", () => {
   test("can be hidden from the feed, and brought back", async ({ page }) => {
     await page.goto("/app/categories/cinema");
     const card = page.getByRole("article").filter({ hasText: headline("festival") });
-    await card.getByRole("button", { name: "More about this story" }).click();
+    await openMenuTo(card.getByRole("button", { name: "More about this story" }), page.getByRole("menuitem", { name: "Hide this story" }));
     await page.getByRole("menuitem", { name: "Hide this story" }).click();
     await expect(page.getByText("Hidden from your feed.")).toBeVisible();
     await page.goto("/app");
     await expect(page.getByRole("heading", { level: 3, name: headline("festival") })).toHaveCount(0);
     await page.goto("/app/categories/cinema");
-    await page.getByRole("article").filter({ hasText: headline("festival") }).getByRole("button", { name: "More about this story" }).click();
+    await openMenuTo(page.getByRole("article").filter({ hasText: headline("festival") }).getByRole("button", { name: "More about this story" }), page.getByRole("menuitem", { name: "Hide this story" }));
     await page.getByRole("menuitem", { name: "Hide this story" }).click();
     await expect(page.getByText("Shown in your feed again.")).toBeVisible();
   });
