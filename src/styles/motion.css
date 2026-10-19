@@ -170,6 +170,31 @@
     animation: panel-in var(--dur-fast) var(--ease-out) reverse both;
   }
 }
+@media (prefers-reduced-motion: no-preference) {
+  /* A dropdown unfolds from the edge it hangs from (Radix reports the side). */
+  :root:not([data-motion="reduce"]) .popover-panel[data-state="open"] {
+    animation: popover-in var(--dur-base) var(--ease-spring) both;
+  }
+  :root:not([data-motion="reduce"]) .popover-panel[data-state="closed"] {
+    animation: popover-in var(--dur-fast) var(--ease-out) reverse both;
+  }
+  .popover-panel[data-side="bottom"] { transform-origin: top center; --popover-from: -0.375rem; }
+  .popover-panel[data-side="top"] { transform-origin: bottom center; --popover-from: 0.375rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* A message slides into place rather than appearing under the reader's eye. */
+  :root:not([data-motion="reduce"]) .alert-in {
+    animation: alert-in var(--dur-base) var(--ease-out) both;
+  }
+}
+@keyframes alert-in {
+  from { opacity: 0; transform: translateY(-0.25rem); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes popover-in {
+  from { opacity: 0; transform: translateY(var(--popover-from, -0.375rem)) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }

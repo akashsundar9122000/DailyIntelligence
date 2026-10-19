@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { SectionHead } from "@/components/news/edition";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { getSession } from "@/lib/auth/session";
@@ -62,16 +63,7 @@ export default async function AdminPage() {
         ))}
       </dl>
 
-      <p className={lastTick && Date.parse(lastTick.startedAt) > now.getTime() - 45 * 60_000 ? "text-sm text-text-secondary" : "border-l-[3px] border-warning bg-warning-subtle px-3 py-2 text-sm text-warning"}>
-        {lastTick ? (
-          <>
-            The scheduler last ticked {relativeTime(lastTick.startedAt, now)} ({lastTick.trigger}, {lastTick.status.toLowerCase()}).
-            {Date.parse(lastTick.startedAt) <= now.getTime() - 45 * 60_000 ? " That is longer than it should be: check the GitHub tick workflow." : ""}
-          </>
-        ) : (
-          "The scheduler has never ticked. Check the GitHub tick workflow and its secrets."
-        )}
-      </p>
+      <TickNote lastTick={lastTick} now={now} />
 
       <section aria-labelledby="switches-heading" className="space-y-3">
         <SectionHead id="switches-heading" kicker="No deploy needed" title="Switches" />
@@ -309,4 +301,12 @@ export default async function AdminPage() {
       </section>
     </div>
   );
+}
+
+/** When the scheduler last ran. A plain line while it is on time; a warning once it is not, or never was. */
+function TickNote({ lastTick, now }: { lastTick: { startedAt: string; trigger: string; status: string } | null | undefined; now: Date }) {
+  if (!lastTick) return <Alert tone="warning">The scheduler has never ticked. Check the GitHub tick workflow and its secrets.</Alert>;
+  const line = `The scheduler last ticked ${relativeTime(lastTick.startedAt, now)} (${lastTick.trigger}, ${lastTick.status.toLowerCase()}).`;
+  if (Date.parse(lastTick.startedAt) > now.getTime() - 45 * 60_000) return <p className="text-sm text-text-secondary">{line}</p>;
+  return <Alert tone="warning">{line} That is longer than it should be: check the GitHub tick workflow.</Alert>;
 }

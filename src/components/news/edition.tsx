@@ -1,4 +1,5 @@
 import { Newspaper } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -30,10 +31,9 @@ export function SectionHead({ kicker, title, href, linkLabel = "See all", id }: 
 /** Shown above the sample edition and nowhere else. It cannot be dismissed: a sample must never pass for news. */
 export function DemoBanner() {
   return (
-    <div role="note" className="border-2 border-press bg-press-subtle px-4 py-3 text-sm text-press">
-      <p className="font-bold uppercase tracking-[0.08em]">Sample content: not live news</p>
-      <p className="mt-0.5 text-text-primary">No source has reported yet, so this deployment is showing invented stories to demonstrate the paper. Every one is labelled Sample.</p>
-    </div>
+    <Alert tone="breaking" title="Sample content: not live news">
+      No source has reported yet, so this deployment is showing invented stories to demonstrate the paper. Every one is labelled Sample.
+    </Alert>
   );
 }
 

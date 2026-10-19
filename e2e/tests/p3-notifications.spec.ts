@@ -7,7 +7,7 @@ import { E2E_CRON_SECRET } from "../support/cron";
 import { PUSH_STUB_PORT } from "../support/push-tls";
 import { SEED_STORIES } from "../support/seed";
 import { expect, test } from "../support/session";
-import { test as fresh } from "../support/test";
+import { choose, test as fresh } from "../support/test";
 
 /*
  * Notifications and live updates end to end. Delivery goes through the real
@@ -131,12 +131,12 @@ test.describe("notification settings", () => {
     await page.goto("/app/settings/notifications");
     const rules = page.getByRole("region", { name: "What to alert you about" });
     await rules.getByRole("switch", { name: "Hot stories you follow" }).click();
-    await rules.getByLabel("At most, per day").selectOption("2");
+    await choose(rules.getByRole("combobox", { name: "At most, per day" }), "2 alerts");
     await rules.getByRole("button", { name: "Save alert rules" }).click();
     await expect(page.getByText("Done: Your alert rules were saved.", { exact: true })).toBeVisible();
     await page.reload();
     await expect(page.getByRole("region", { name: "What to alert you about" }).getByRole("switch", { name: "Hot stories you follow" })).toBeChecked();
-    await expect(page.getByRole("region", { name: "What to alert you about" }).getByLabel("At most, per day")).toHaveValue("2");
+    await expect(page.getByRole("region", { name: "What to alert you about" }).getByRole("combobox", { name: "At most, per day" })).toHaveText("2 alerts");
   });
 
   test("pauses everything without changing a rule, and resumes", async ({ page }) => {

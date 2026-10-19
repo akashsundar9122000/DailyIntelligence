@@ -162,6 +162,7 @@ const PAIRS: Pair[] = [
   { fg: "accent",         bg: "canvas",         min: 4.5, why: "a link on the page" },
   { fg: "accent",         bg: "surface",        min: 4.5, why: "a link on a card" },
   { fg: "accent",         bg: "accent-subtle",  min: 4.5, why: "accent text on its tint" },
+  { fg: "text-secondary", bg: "accent-subtle",  min: 4.5, why: "a highlighted option's description" },
   { fg: "accent-2",       bg: "canvas",         min: 4.5, why: "the second hue of a headline's sheen" },
   { fg: "accent-2",       bg: "surface",        min: 4.5, why: "the second hue on a card" },
   { fg: "on-accent",      bg: "accent",         min: 4.5, why: "a primary button's label" },

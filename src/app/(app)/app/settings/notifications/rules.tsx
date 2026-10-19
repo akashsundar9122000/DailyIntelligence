@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Panel } from "@/components/settings/panel";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
 import { setPauseAction } from "@/lib/actions/notifications";
@@ -70,16 +71,16 @@ export function AlertRules({ initial }: { initial: NotificationPrefs }) {
             <span>Quiet until</span>
             <input type="time" value={rules.quietEnd} disabled={!rules.quietHours} onChange={(event) => set("quietEnd", event.target.value)} className={input} />
           </label>
-          <label className="space-y-1.5 text-sm font-medium">
-            <span>At most, per day</span>
-            <select value={rules.dailyCap} onChange={(event) => set("dailyCap", Number(event.target.value))} className={input}>
-              {[0, 1, 2, 3, 5, 8].map((value) => (
-                <option key={value} value={value}>
-                  {value === 0 ? "No alerts" : `${value} ${value === 1 ? "alert" : "alerts"}`}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="space-y-1.5 text-sm font-medium">
+            <span id="rules-daily-cap">At most, per day</span>
+            <Select
+              labelledBy="rules-daily-cap"
+              value={String(rules.dailyCap)}
+              onChange={(value) => set("dailyCap", Number(value))}
+              options={[0, 1, 2, 3, 5, 8].map((value) => ({ value: String(value), label: value === 0 ? "No alerts" : `${value} ${value === 1 ? "alert" : "alerts"}` }))}
+              className="h-11"
+            />
+          </div>
         </div>
       </div>
       <div className="flex justify-end border-t border-border pt-4">

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { Alert } from "@/components/ui/alert";
+
 /** A long-form page: the source directory, the AI policy and the legal pages, set as a column. */
 export function ProsePage({ kicker, title, lead, notice, children }: { kicker?: string; title: string; lead: string; notice?: string; children: ReactNode }) {
   return (
@@ -9,7 +11,11 @@ export function ProsePage({ kicker, title, lead, notice, children }: { kicker?: 
         <h1 className="mt-2 text-5xl font-bold leading-[1.02] text-text-primary sm:text-6xl">{title}</h1>
         <p className="dek pt-5 text-xl leading-relaxed">{lead}</p>
       </div>
-      {notice ? <p className="mt-8 border-l-[3px] border-warning bg-warning-subtle p-4 text-sm text-warning">{notice}</p> : null}
+      {notice ? (
+        <Alert tone="warning" className="mt-8">
+          {notice}
+        </Alert>
+      ) : null}
       <div className="space-y-12 pt-12">{children}</div>
     </article>
   );

@@ -43,13 +43,7 @@ export function ReportDialog({ storyId, open, onOpenChange }: { storyId: string;
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title="Report this story" description="Tell us what is wrong. Reports are read by a person; nothing is removed automatically.">
       <form onSubmit={onSubmit} className="space-y-4">
-        <SelectField label="What is wrong" name="reason" defaultValue="misleading">
-          {REASONS.map((reason) => (
-            <option key={reason.value} value={reason.value}>
-              {reason.label}
-            </option>
-          ))}
-        </SelectField>
+        <SelectField label="What is wrong" name="reason" defaultValue="misleading" options={REASONS} />
         <TextField label="Anything we should know (optional)" name="detail" maxLength={2000} />
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={busy}>

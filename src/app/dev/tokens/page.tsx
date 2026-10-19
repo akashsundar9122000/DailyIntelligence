@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
 import { Logo } from "@/components/branding/logo";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SelectField } from "@/components/ui/field";
 import { PalettePicker } from "@/components/ui/palette-picker";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
@@ -205,6 +207,38 @@ export default async function TokensPage() {
           <Button variant="link">Link</Button>
           <Button loading>Saving</Button>
           <Button disabled>Disabled</Button>
+        </div>
+      </Section>
+
+      <Section title="Alerts" note="Every tone has an icon and words; colour is never the only signal. Breaking is the reserved alert colour.">
+        <div className="grid gap-3 lg:grid-cols-2">
+          <Alert title="Your edition is not set up yet." actions={<Button size="sm">Set up my edition</Button>}>
+            Neutral: a notice that is part of the page.
+          </Alert>
+          <Alert tone="info">Info: a code was sent to your address.</Alert>
+          <Alert tone="success">Success: your alert rules were saved.</Alert>
+          <Alert tone="warning">Warning: limited source coverage, one publisher so far.</Alert>
+          <Alert tone="danger">Danger: that code is not correct.</Alert>
+          <Alert tone="breaking" title="Sample content: not live news">
+            Breaking: reserved for breaking, live or wrong.
+          </Alert>
+        </div>
+      </Section>
+
+      <Section title="Dropdowns" note="The paper's own select: a combobox and a listbox, with a search box once a list has eight or more choices.">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SelectField
+            label="Mute or block"
+            defaultValue="mute"
+            options={[
+              { value: "mute", label: "Mute", description: "Shown lower, never hidden" },
+              { value: "block", label: "Block", description: "Removed from every feed" },
+            ]}
+          />
+          <SelectField
+            label="Section"
+            options={["Cricket", "Football", "Cinema", "Climate", "Science", "Space", "Startups", "Technology", "World politics"].map((label) => ({ value: label.toLowerCase().replace(/ /g, "-"), label }))}
+          />
         </div>
       </Section>
 

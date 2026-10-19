@@ -36,13 +36,7 @@ export function ReadingSettings() {
         />
       </SettingRow>
       <SettingRow label="Open the paper on" note="The page you land on after signing in.">
-        <SelectField label="Open the paper on" labelHidden value={preferences.landingPage} onChange={(event) => update({ landingPage: event.target.value })} className="sm:w-64">
-          {LANDING_PAGE_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </SelectField>
+        <SelectField label="Open the paper on" labelHidden value={preferences.landingPage} onChange={(landingPage) => update({ landingPage })} options={LANDING_PAGE_OPTIONS} className="sm:w-64" />
       </SettingRow>
       <SettingRow label="Language" note="The paper is in English. Tamil and Hindi are planned, and machine translation will always be labelled.">
         <span className="text-sm font-semibold">English</span>

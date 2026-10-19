@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -196,7 +197,9 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
               {explainer ? "" : story.sourceCount >= 2 || story.officialCount >= 1 ? " An AI explainer with citations is added when one passes its checks." : " An AI explainer is written once a second publisher or an official source reports it."}
             </p>
             {story.sourceCount === 1 ? (
-              <p className="mt-3 border-l-[3px] border-warning bg-warning-subtle px-3 py-2 text-sm text-warning">Limited source coverage: one publisher so far.</p>
+              <Alert tone="warning" className="mt-3">
+                Limited source coverage: one publisher so far.
+              </Alert>
             ) : null}
           </section>
 

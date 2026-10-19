@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { Alert } from "@/components/ui/alert";
+
 /** The frame every authentication page shares: a kicker, one heading, one form, one way out. */
 export function AuthCard({
   kicker,
@@ -28,19 +30,24 @@ export function AuthCard({
 }
 
 export function FormError({ message }: { message: string | null }) {
-  // Always in the DOM so the announcement is made when the text arrives.
+  // The region is always in the DOM so the announcement is made when the text
+  // arrives; the Alert inside it takes no role of its own.
   return (
-    <p role="alert" className={message ? "border-l-[3px] border-danger bg-danger-subtle px-3 py-2.5 text-sm text-danger" : "sr-only"}>
-      {message ?? ""}
-    </p>
+    <div role="alert">
+      {message ? (
+        <Alert tone="danger" role="presentation">
+          {message}
+        </Alert>
+      ) : null}
+    </div>
   );
 }
 
 export function FormNotice({ children }: { children: ReactNode }) {
   return (
-    <p role="status" className="border-l-[3px] border-rule bg-surface-sunken px-3 py-2.5 text-sm text-text-primary">
+    <Alert tone="info" live="polite">
       {children}
-    </p>
+    </Alert>
   );
 }
 

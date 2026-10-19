@@ -8,6 +8,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { Panel } from "@/components/settings/panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/components/ui/cn";
 import { toast } from "@/components/ui/toast";
 import { categoryFor } from "@/config/categories";
@@ -128,13 +129,20 @@ export function InterestsSettings({ interests }: { interests: InterestRow[] }) {
             A word or name
           </label>
           <input id="word" value={draft.text} onChange={(event) => setDraft((current) => ({ ...current, text: event.target.value }))} placeholder="A word or a name" maxLength={120} className="h-11 flex-1 border border-border-input bg-surface px-3" />
-          <label htmlFor="stance" className="sr-only">
+          <label id="stance-label" htmlFor="stance" className="sr-only">
             Mute or block
           </label>
-          <select id="stance" value={draft.stance} onChange={(event) => setDraft((current) => ({ ...current, stance: event.target.value as "mute" | "block" }))} className="h-11 border border-border-input bg-surface px-3">
-            <option value="mute">Mute</option>
-            <option value="block">Block</option>
-          </select>
+          <Select<"mute" | "block">
+            id="stance"
+            labelledBy="stance-label"
+            value={draft.stance}
+            onChange={(stance) => setDraft((current) => ({ ...current, stance }))}
+            options={[
+              { value: "mute", label: "Mute", description: "Shown lower, never hidden" },
+              { value: "block", label: "Block", description: "Removed from every feed" },
+            ]}
+            className="h-11 sm:w-40"
+          />
           <Button type="submit" variant="secondary" size="lg" disabled={pending || draft.text.trim().length < 2}>
             <Plus className="size-4" aria-hidden /> Add
           </Button>

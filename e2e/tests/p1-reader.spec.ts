@@ -5,7 +5,7 @@ import { openMenuTo } from "../support/menu";
 import { newEmail, signIn } from "../support/auth";
 import { SEED_STORIES } from "../support/seed";
 import { expect, test } from "../support/session";
-import { test as fresh } from "../support/test";
+import { choose, test as fresh } from "../support/test";
 
 /* Every headline here is from the invented seed edition (e2e/support/seed.ts). */
 
@@ -62,10 +62,10 @@ fresh.describe("setting up an edition", () => {
     await page.goto("/app/settings/reading");
     // Preferences save a moment after the change; wait for that write, as a reader's next click would.
     const written = page.waitForResponse((response) => response.request().method() === "POST" && response.status() === 200);
-    await page.getByLabel("Open the paper on").selectOption("/app/hot");
+    await choose(page.getByRole("combobox", { name: "Open the paper on" }), "Hot Now");
     await written;
     await page.reload();
-    await expect(page.getByLabel("Open the paper on")).toHaveValue("/app/hot");
+    await expect(page.getByRole("combobox", { name: "Open the paper on" })).toHaveText("Hot Now");
     await page.goto("/app/start");
     await expect(page).toHaveURL(/\/app\/hot$/);
   });
@@ -156,7 +156,7 @@ test.describe("settings for reading", () => {
   test("a muted word is listed, labelled, and can be taken back", async ({ page }) => {
     await page.goto("/app/settings/interests");
     await page.getByLabel("A word or name").fill("harbour");
-    await page.getByLabel("Mute or block").selectOption("mute");
+    await choose(page.getByRole("combobox", { name: "Mute or block" }), "Mute");
     await page.getByRole("button", { name: "Add" }).click();
     await expect(toastSaying(page, "“harbour” muted.")).toBeVisible();
     const row = page.getByRole("listitem").filter({ hasText: "harbour" });

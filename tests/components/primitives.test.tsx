@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { Alert } from "@/components/ui/alert";
 import { Chip } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
@@ -29,15 +30,112 @@ describe("TextField", () => {
   });
 });
 
+const SECTIONS = ["Cricket", "Football", "Cinema", "Climate", "Science", "Space", "Startups", "Technology", "World politics"].map((label) => ({
+  value: label.toLowerCase().replace(/ /g, "-"),
+  label,
+}));
+
 describe("SelectField", () => {
-  it("is a native select with a label", () => {
-    render(
-      <SelectField label="Benchmark" defaultValue="b">
-        <option value="a">A</option>
-        <option value="b">B</option>
-      </SelectField>,
+  it("is a combobox named by its label, showing the current choice", () => {
+    render(<SelectField label="Benchmark" defaultValue="b" options={[{ value: "a", label: "Alpha" }, { value: "b", label: "Beta" }]} />);
+    const trigger = screen.getByRole("combobox", { name: "Benchmark" });
+    expect(trigger).toHaveTextContent("Beta");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
+  });
+
+  it("opens a listbox, and the keyboard alone can choose", async () => {
+    const onChange = vi.fn();
+    render(<SelectField label="Stance" value="mute" onChange={onChange} options={[{ value: "mute", label: "Mute" }, { value: "block", label: "Block" }]} />);
+    fireEvent.click(screen.getByRole("combobox", { name: /Stance/ }));
+    const list = await screen.findByRole("listbox");
+    // It opens on the current choice, marked as selected.
+    expect(within(list).getByRole("option", { name: "Mute" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(list).toHaveFocus());
+    fireEvent.keyDown(list, { key: "ArrowDown" });
+    expect(list).toHaveAttribute("aria-activedescendant", expect.stringContaining("block"));
+    fireEvent.keyDown(list, { key: "Enter" });
+    expect(onChange).toHaveBeenCalledWith("block");
+    await waitFor(() => expect(screen.queryByRole("listbox")).not.toBeInTheDocument());
+  });
+
+  it("names an option by its label, and describes it by its second line", async () => {
+    render(<SelectField label="Stance" defaultValue="mute" options={[{ value: "mute", label: "Mute", description: "Shown lower, never hidden" }, { value: "block", label: "Block" }]} />);
+    fireEvent.click(screen.getByRole("combobox", { name: /Stance/ }));
+    const option = await screen.findByRole("option", { name: "Mute" });
+    expect(option).toHaveAccessibleDescription("Shown lower, never hidden");
+  });
+
+  it("jumps to an option by its first letter when there is no search box", async () => {
+    const onChange = vi.fn();
+    render(<SelectField label="Stance" value="mute" onChange={onChange} options={[{ value: "mute", label: "Mute" }, { value: "block", label: "Block" }]} />);
+    fireEvent.click(screen.getByRole("combobox", { name: /Stance/ }));
+    const list = await screen.findByRole("listbox");
+    fireEvent.keyDown(list, { key: "b" });
+    fireEvent.keyDown(list, { key: "Enter" });
+    expect(onChange).toHaveBeenCalledWith("block");
+  });
+
+  it("gives a long list a search box that filters, and says when nothing matches", async () => {
+    const onChange = vi.fn();
+    render(<SelectField label="Section" options={SECTIONS} onChange={onChange} />);
+    fireEvent.click(screen.getByRole("combobox", { name: /Section/ }));
+    const search = await screen.findByRole("combobox", { name: "Search" });
+    await waitFor(() => expect(search).toHaveFocus());
+    fireEvent.change(search, { target: { value: "sp" } });
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Space"]);
+    fireEvent.keyDown(search, { key: "Enter" });
+    expect(onChange).toHaveBeenCalledWith("space");
+
+    fireEvent.click(screen.getByRole("combobox", { name: /Section/ }));
+    const again = await screen.findByRole("combobox", { name: "Search" });
+    fireEvent.change(again, { target: { value: "zzz" } });
+    expect(screen.queryAllByRole("option")).toHaveLength(0);
+    expect(screen.getByText(/Nothing matches/)).toBeInTheDocument();
+  });
+
+  it("submits its value with a form, as the native select did", async () => {
+    const { container } = render(
+      <form>
+        <SelectField label="What is wrong" name="reason" defaultValue="misleading" options={[{ value: "misleading", label: "Misleading" }, { value: "wrong_category", label: "Wrong section" }]} />
+      </form>,
     );
-    expect(screen.getByRole("combobox", { name: "Benchmark" })).toHaveValue("b");
+    const form = container.querySelector("form")!;
+    expect(new FormData(form).get("reason")).toBe("misleading");
+    fireEvent.click(screen.getByRole("combobox", { name: /What is wrong/ }));
+    fireEvent.click(await screen.findByRole("option", { name: "Wrong section" }));
+    expect(new FormData(form).get("reason")).toBe("wrong_category");
+  });
+
+  it("closes on Escape without changing the choice", async () => {
+    const onChange = vi.fn();
+    render(<SelectField label="Stance" value="mute" onChange={onChange} options={[{ value: "mute", label: "Mute" }, { value: "block", label: "Block" }]} />);
+    fireEvent.click(screen.getByRole("combobox", { name: /Stance/ }));
+    const list = await screen.findByRole("listbox");
+    fireEvent.keyDown(list, { key: "ArrowDown" });
+    fireEvent.keyDown(list, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("listbox")).not.toBeInTheDocument());
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("Alert", () => {
+  it("is a note when it is part of the page, and announced only when asked", () => {
+    const { rerender } = render(<Alert tone="warning" title="Limited source coverage">One publisher so far.</Alert>);
+    expect(screen.getByRole("note")).toHaveTextContent("Limited source coverage");
+    rerender(<Alert tone="danger" live="assertive">That code is not correct.</Alert>);
+    expect(screen.getByRole("alert")).toHaveTextContent("That code is not correct.");
+    rerender(<Alert tone="success" live="polite">Saved.</Alert>);
+    expect(screen.getByRole("status")).toHaveTextContent("Saved.");
+  });
+
+  it("offers a named close button only when it can be dismissed", () => {
+    const onDismiss = vi.fn();
+    const { rerender } = render(<Alert>Plain</Alert>);
+    expect(screen.queryByRole("button", { name: "Dismiss" })).not.toBeInTheDocument();
+    rerender(<Alert onDismiss={onDismiss}>Plain</Alert>);
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(onDismiss).toHaveBeenCalledOnce();
   });
 });
 

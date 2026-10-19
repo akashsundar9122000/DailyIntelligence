@@ -1,6 +1,7 @@
 import { openMenuTo } from "../support/menu";
 import { SEED_STORIES } from "../support/seed";
 import { expect, test } from "../support/session";
+import { choose } from "../support/test";
 
 /* Every headline here is from the invented seed edition (e2e/support/seed.ts). */
 
@@ -121,7 +122,7 @@ test.describe("one story", () => {
     await openMenuTo(page.getByRole("button", { name: "More about this story" }).first(), page.getByRole("menuitem", { name: "Report a problem" }));
     await page.getByRole("menuitem", { name: "Report a problem" }).click();
     const dialog = page.getByRole("dialog", { name: "Report this story" });
-    await dialog.getByLabel("What is wrong").selectOption("wrong_category");
+    await choose(dialog.getByRole("combobox", { name: "What is wrong" }), "In the wrong section");
     await dialog.getByRole("button", { name: "Send report" }).click();
     await expect(page.getByText("Thank you. Your report went to the editors.")).toBeVisible();
   });

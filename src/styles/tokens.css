@@ -193,6 +193,8 @@
   --z-header: 40;
   --z-popover: 50;
   --z-overlay: 60;
+  /* A dropdown can open inside a dialog, so it sits above the dialog's overlay. */
+  --z-dropdown: 70;
 }
 
 @media (max-width: 1023px) {

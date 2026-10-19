@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/components/ui/cn";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
@@ -20,6 +21,11 @@ import type { NotificationPrefs } from "@/lib/services/reader";
 import type { Preferences } from "@/lib/settings/preferences";
 
 const LANDING_INTERESTS_KEY = "di-landing-interests";
+
+const FOLLOW_KINDS = [
+  { value: "entity", label: "A person, team or organisation", description: "ISRO, Chennai Super Kings, Infosys" },
+  { value: "keyword", label: "A keyword or topic", description: "monsoon, semiconductors, UPI" },
+] as const satisfies readonly { value: InterestKind; label: string; description: string }[];
 export const STEPS = ["Coverage", "Sections", "Follows", "Reading", "Alerts", "Your edition"] as const;
 
 type Follow = { id: string; kind: InterestKind; value: string; label: string };
@@ -327,18 +333,17 @@ export function OnboardingWizard({ initial }: { initial: WizardInitial }) {
       {step === 3 ? (
         <Step kicker="Step 3 of 6" title="Anything in particular?" dek="People, teams, companies, film industries, technologies, keywords, or the sources you trust. All optional.">
           <div className="flex flex-col gap-2 sm:flex-row">
-            <label htmlFor="follow-kind" className="sr-only">
+            <label id="follow-kind-label" htmlFor="follow-kind" className="sr-only">
               What it is
             </label>
-            <select
+            <Select<InterestKind>
               id="follow-kind"
+              labelledBy="follow-kind-label"
               value={draft.kind}
-              onChange={(event) => setDraft((current) => ({ ...current, kind: event.target.value as InterestKind }))}
-              className="h-11 border border-border-input bg-surface px-3"
-            >
-              <option value="entity">A person, team or organisation</option>
-              <option value="keyword">A keyword or topic</option>
-            </select>
+              onChange={(kind) => setDraft((current) => ({ ...current, kind }))}
+              options={FOLLOW_KINDS}
+              className="h-11 sm:w-72"
+            />
             <label htmlFor="follow-text" className="sr-only">
               Name
             </label>
@@ -470,16 +475,16 @@ export function OnboardingWizard({ initial }: { initial: WizardInitial }) {
               <span>Quiet until</span>
               <input type="time" value={alerts.quietEnd} onChange={(event) => setAlerts((current) => ({ ...current, quietEnd: event.target.value }))} className="h-11 w-full border border-border-input bg-surface px-3" />
             </label>
-            <label className="space-y-1.5 text-sm font-medium">
-              <span>At most, per day</span>
-              <select value={alerts.dailyCap} onChange={(event) => setAlerts((current) => ({ ...current, dailyCap: Number(event.target.value) }))} className="h-11 w-full border border-border-input bg-surface px-3">
-                {[1, 2, 3, 5, 8].map((value) => (
-                  <option key={value} value={value}>
-                    {value} {value === 1 ? "alert" : "alerts"}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="space-y-1.5 text-sm font-medium">
+              <span id="wizard-daily-cap">At most, per day</span>
+              <Select
+                labelledBy="wizard-daily-cap"
+                value={String(alerts.dailyCap)}
+                onChange={(value) => setAlerts((current) => ({ ...current, dailyCap: Number(value) }))}
+                options={[1, 2, 3, 5, 8].map((value) => ({ value: String(value), label: `${value} ${value === 1 ? "alert" : "alerts"}` }))}
+                className="h-11"
+              />
+            </div>
           </div>
           <p className="border-l-[3px] border-border-strong pl-3 text-sm text-text-secondary">
             Nothing reaches a screen until you also switch notifications on for that device, in Settings under Notifications. Heat alone never sends an alert: a story must be confirmed and about something you follow.

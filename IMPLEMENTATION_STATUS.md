@@ -469,3 +469,24 @@ Not done:
   clean clone with `vercel deploy --prod`. `/api/health` reports `di_app`,
   row security enforced and commit `b4ad298`; the production smoke suite
   passed 28 of 28. The live landing page wears Aurora by day and by night.
+
+## Own dropdowns and alerts (2026-10-19)
+
+- **Select** (`components/ui/select.tsx`): the paper's own dropdown in place of
+  every native `<select>` (onboarding, interests, alert rules, reading
+  settings, the report dialog). A combobox and a listbox to the ARIA pattern:
+  arrows, Home/End, Enter, Escape, type-to-jump; a search box from eight
+  choices; options named by their label and described by a second line;
+  themed, animated, 44px on touch; a hidden input keeps form submissions.
+- **Alert** (`components/ui/alert.tsx`): neutral, info, success, warning,
+  danger and breaking, each with an icon and words; title, actions, optional
+  dismiss; announced only when asked (`live`). Replaces the hand-styled boxes:
+  the edition-not-set-up notice, limited coverage, sign-in errors and notices,
+  the sample-edition banner, the legal-page notices, the admin tick warning.
+- Both are on `/dev/tokens`, so axe measures them in all 20 looks.
+- Found by e2e and fixed: the dropdown opened under a dialog's overlay (a new
+  `--z-dropdown` above it), and an option with a second line was named by both
+  lines.
+- Verified: `pnpm verify` green, e2e 431. Budget: shared 167 KB (unchanged),
+  all chunks 489 KB (was 440: the popover the dropdown is built on, now on
+  more pages).

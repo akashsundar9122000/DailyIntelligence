@@ -5,6 +5,7 @@ import { DemoBanner, EmptyEdition, FrontLayout, type Placed } from "@/components
 import { ChipNav } from "@/components/news/chip-nav";
 import { BriefingColumn, HotColumn } from "@/components/news/sidebar";
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { NewStories } from "@/components/news/new-stories";
 import { InterestStrip } from "@/components/news/dashboards";
@@ -74,14 +75,16 @@ export default async function ForYouPage({ searchParams }: { searchParams: Promi
       />
 
       {!profile.onboardedAt ? (
-        <div className="flex flex-col gap-3 border-l-[3px] border-rule bg-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-text-primary">
-            <span className="font-semibold">Your edition is not set up yet.</span> Choose your sections and places, and this page starts ranking for you.
-          </p>
-          <Button asChild size="sm">
-            <Link href="/app/onboarding">Set up my edition</Link>
-          </Button>
-        </div>
+        <Alert
+          title="Your edition is not set up yet."
+          actions={
+            <Button asChild size="sm">
+              <Link href="/app/onboarding">Set up my edition</Link>
+            </Button>
+          }
+        >
+          Choose your sections and places, and this page starts ranking for you.
+        </Alert>
       ) : null}
 
       <ChipNav

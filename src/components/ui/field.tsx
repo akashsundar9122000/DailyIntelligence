@@ -1,8 +1,9 @@
 "use client";
 
-import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type ReactNode } from "react";
 
 import { cn } from "./cn";
+import { Select, type SelectOption } from "./select";
 
 const control =
   "h-10 w-full rounded-md border border-border-input bg-surface px-3 text-text-primary placeholder:text-text-tertiary " +
@@ -31,7 +32,7 @@ function Shell({
 }: FieldShell & { id: string; children: ReactNode }) {
   return (
     <div className={cn("space-y-1.5", className)}>
-      <label htmlFor={id} className={cn("block text-sm font-medium text-text-primary", labelHidden && "sr-only")}>
+      <label id={`${id}-label`} htmlFor={id} className={cn("block text-sm font-medium text-text-primary", labelHidden && "sr-only")}>
         {label}
       </label>
       {children}
@@ -72,26 +73,33 @@ export function TextField({
 }
 
 /**
- * A native <select>. On a phone it opens the platform's own picker, which is
- * better than any custom list at being reachable with a thumb.
+ * A labelled choice from a list: the paper's own dropdown (./select), with a
+ * search box once the list is long. The trigger is named by the label and
+ * reads the current choice as its value, as the ARIA select pattern does.
  */
-export function SelectField({
+export function SelectField<V extends string>({
   label,
   hint,
   error,
   labelHidden,
   className,
   id: givenId,
-  children,
   ...props
-}: FieldShell & Omit<SelectHTMLAttributes<HTMLSelectElement>, "className">) {
+}: FieldShell & {
+  id?: string;
+  options: readonly SelectOption<V>[];
+  value?: V;
+  defaultValue?: V;
+  onChange?: (next: V) => void;
+  name?: string;
+  searchable?: boolean;
+  disabled?: boolean;
+}) {
   const generated = useId();
   const id = givenId ?? generated;
   return (
     <Shell id={id} label={label} hint={hint} error={error} labelHidden={labelHidden} className={className}>
-      <select id={id} aria-invalid={error ? true : undefined} aria-describedby={describedBy(id, hint, error)} className={cn(control, "pr-8")} {...props}>
-        {children}
-      </select>
+      <Select id={id} labelledBy={`${id}-label`} describedBy={describedBy(id, hint, error)} invalid={Boolean(error)} {...props} />
     </Shell>
   );
 }

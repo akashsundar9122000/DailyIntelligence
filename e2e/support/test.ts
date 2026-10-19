@@ -75,3 +75,17 @@ export async function untilHydrated(locator: Locator): Promise<void> {
     })
     .toBe(true);
 }
+
+/**
+ * Choose from the paper's dropdown (components/ui/select.tsx) the way a person
+ * does: open it, then press the option by its visible name. Hydration first,
+ * for the same reason as untilHydrated: a press before it opens nothing.
+ */
+export async function choose(combobox: Locator, option: string): Promise<void> {
+  await untilHydrated(combobox);
+  await combobox.click();
+  const listbox = combobox.page().getByRole("listbox");
+  await listbox.getByRole("option", { name: option, exact: true }).click();
+  await expect(listbox).toBeHidden();
+  await expect(combobox).toHaveText(option);
+}
