@@ -30,6 +30,8 @@ export type StoryCard = {
   excerpt: string | null;
   category: string | null;
   categories: string[];
+  /** "ai" when the rules found no section and the model chose one: said on the story page. */
+  categoriesBy: "rules" | "ai";
   scope: StoryScope;
   states: string[];
   countries: string[];
@@ -52,7 +54,7 @@ const CARD_COLUMNS = sql`
   st.id, i.title as headline, coalesce(i.publisher_name, i.publisher_domain) as publisher, i.publisher_domain as "publisherDomain",
   src.key as "sourceKey", i.canonical_url as url, i.content_type as "contentType", src.is_official as "isOfficial",
   case when src.excerpt_display_allowed then i.excerpt else null end as excerpt,
-  st.primary_category as category, st.categories, st.scope, st.indian_states as states, st.event_countries as countries,
+  st.primary_category as category, st.categories, st.categories_by as "categoriesBy", st.scope, st.indian_states as states, st.event_countries as countries,
   st.source_count as "sourceCount", st.item_count as "itemCount", st.official_count as "officialCount",
   st.heat, st.confidence, st.importance, st.state,
   ${isoInstant(sql`coalesce(st.first_published_at, i.published_at)`)} as "publishedAt",

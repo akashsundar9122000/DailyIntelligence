@@ -70,6 +70,22 @@ e2e/                  Playwright: tests/ (desktop, Pixel 7, reduced motion, axe)
   ingested, last-checked, story-last-updated, AI-generated. A missing
   publication time is shown as "not given", never filled with the detection time.
   `timesLine()` in `lib/format/date.ts` is the one way it is written.
+- **A model sentence is shown only after it passes `checkClaims`**
+  (`src/lib/ai/validate.ts`): it cites a record it was given, every number is in
+  a record it cites, every name is in the bundle, an official claim is
+  attributed. One correction attempt, then `rejected` -- stored, never shown
+  (row security hides it from the runtime role, not only the WHERE clause).
+  Every model output is labelled "AI-generated", wherever it appears.
+- **The model reads only what the page may show.** `loadBundle()` applies
+  `showableSource()`, and an excerpt goes in only where the source allows both
+  showing it and AI summaries of it. From GDELT: headline and times only.
+- **Never call the model inside a transaction.** Read, close, call, open again
+  to write: a 20-second call would hold Neon's one pooled connection.
+  Every call has a deadline (`nvidiaModel({ deadline })`); running out of time
+  is `AiOutOfTime`, recorded as nothing, not as a failure.
+- **Prompts are versioned.** Change a prompt's words, change its
+  `*_PROMPT_VERSION`; every stored output names the version that wrote it.
+  `pnpm eval:ai` runs the live model on fixed bundles after any prompt change.
 - **Heat is not confidence.** Two scores, stored with their components and a
   version, shown side by side. Nothing may combine them into one number.
 - **Newsprint: one spot colour.** Press red means breaking, live or wrong, and

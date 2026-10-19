@@ -15,8 +15,4 @@ export const SECTION_PLANS: Record<string, SectionPlan> = {
       "Every post labelled as a post, an official statement, a video or commentary. Engagement is never treated as evidence.",
     ],
   },
-  "/app/briefings": {
-    phase: 2,
-    willHold: ["Morning and evening briefings, and topic catch-ups.", "Every claim linked to the source it came from, and the period covered stated."],
-  },
 };

@@ -162,12 +162,17 @@ function ProfileMenu({ user }: { user: ShellUser }) {
   return (
     <Dropdown.Root>
       <Dropdown.Trigger asChild>
+        {/*
+          The name comes from the hidden text and the initials are decoration.
+          An aria-label here would not contain the visible "AR", and a voice
+          user saying what they see would not reach the button (WCAG 2.5.3).
+        */}
         <button
           type="button"
-          aria-label={`Account menu for ${user.name}`}
           className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border-strong bg-surface font-display text-sm font-bold text-text-primary hover:bg-surface-hover coarse:size-11"
         >
-          {initials(user.name) || "?"}
+          <span aria-hidden>{initials(user.name) || "?"}</span>
+          <span className="sr-only">Account menu for {user.name}</span>
         </button>
       </Dropdown.Trigger>
       <Dropdown.Portal>

@@ -22,6 +22,7 @@ export const DENSITIES = ["comfortable", "compact"] as const;
 export const MOTION = ["system", "reduce"] as const;
 /** How long an explainer is by default. The reader can switch on any story. */
 export const READING_STYLES = ["concise", "balanced", "deep"] as const;
+export type ReadingStyle = (typeof READING_STYLES)[number];
 /** Which edition the feed opens on. */
 export const SCOPES = ["both", "india", "global"] as const;
 export const LANGUAGES = ["en"] as const;

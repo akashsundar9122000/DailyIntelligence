@@ -3,55 +3,68 @@ import { createServer, type Server } from "node:http";
 /**
  * A stand-in for the hosted model, speaking the same chat-completions format.
  *
- * It is not clever and is not meant to be. It does what a model does at its
- * most cooperative -- looks something up, then repeats exactly what it was
- * given, with citations -- and, when a question contains the word "invent",
- * what a model does at its worst: states figures nobody gave it. The product
- * cannot tell which it is talking to, which is the point of the test.
+ * It is not clever and is not meant to be. For an explainer or a briefing it
+ * does what a model does at its most careful -- repeats the records it was
+ * given, cited -- and for one story, the observatory map, what a model does at
+ * its worst: states a figure no record gave. The product cannot tell which it
+ * is talking to, which is the point of the test: the careful output must
+ * reach the page, the invented one must not.
+ *
+ * For a question: "who" is answered from the first record; anything else is
+ * honestly unanswerable from the records.
  */
 export const MODEL_STUB_PORT = 4599;
 
-type Message = { role: string; content: string | null; tool_calls?: unknown };
-type ToolResult = { matches?: { handle: string; type: string }[]; facts?: { id: string; label: string; value: string }[]; notes?: string[]; error?: string };
+type Message = { role: string; content: string | null };
 
-let counter = 0;
-const call = (name: string, args: Record<string, unknown>) => ({ role: "assistant", content: null, tool_calls: [{ id: `stub-${(counter += 1)}`, type: "function", function: { name, arguments: JSON.stringify(args) } }] });
-const say = (content: string) => ({ role: "assistant", content });
+/** "S1 | publisher: x | type: official statement | ... | headline: y" -> its parts. */
+function records(text: string, tag: string) {
+  const body = new RegExp(`<${tag}>\\n([\\s\\S]*?)\\n</${tag}>`).exec(text)?.[1] ?? "";
+  return body
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      const [ref, ...fields] = line.split(" | ");
+      const field = (name: string) => fields.find((entry) => entry.startsWith(`${name}: `))?.slice(name.length + 2) ?? "";
+      return { ref: ref!.trim(), publisher: field("publisher"), official: field("type") === "official statement", headline: field("headline") };
+    });
+}
 
-function reply(messages: Message[], tools: string[]) {
-  const users = messages.filter((message) => message.role === "user").map((message) => message.content ?? "");
-  // The reader's question is the last thing they wrote; a correction from the product is not a question.
-  const question = [...users].reverse().find((text) => !text.startsWith("Your answer cannot be shown")) ?? "";
-  const since = messages.slice(messages.findLastIndex((message) => message.role === "user" && message.content === question) + 1);
-  const results = since.filter((message) => message.role === "tool").map((message) => JSON.parse(message.content ?? "{}") as ToolResult);
-  const last = results[results.length - 1];
+const sentence = (record: { publisher: string; official: boolean; headline: string }) =>
+  // An official record's claim is attributed, as the product requires; a report is repeated as reported.
+  record.official ? `${record.publisher} said: ${record.headline}.` : `${record.publisher} reported: ${record.headline}.`;
 
-  if (/invent/i.test(question)) {
-    if (tools.includes("search") && results.length === 0) return call("search", { query: /[A-Z]{4,}/.exec(question)?.[0] ?? "Sample" });
-    if (last?.matches?.[0] && tools.includes("instrument_overview") && results.length === 1) return call("instrument_overview", { handle: last.matches[0].handle });
-    return say("It closed at ₹9,999.99 and analysts expect a 42.5% rise next quarter [F1]. You should buy it.");
-  }
-  if (tools.length === 0) return say("XIRR weights each cash flow by when it happened, so it measures your own experience. CAGR compares one starting value with one ending value.");
+function reply(messages: Message[]): string {
+  const system = messages.find((message) => message.role === "system")?.content ?? "";
+  const user = [...messages].reverse().find((message) => message.role === "user")?.content ?? "";
+  const first = messages.find((message) => message.role === "user")?.content ?? "";
 
-  if (results.length === 0) {
-    if (tools.includes("portfolio_summary") && /portfolio/i.test(question)) return call("portfolio_summary", {});
-    if (tools.includes("market_summary") && /market/i.test(question)) return call("market_summary", {});
-    if (tools.includes("project_investment")) {
-      const numbers = question.replace(/,/g, "").match(/\d+(?:\.\d+)?/g) ?? [];
-      return call("project_investment", { kind: /month/i.test(question) ? "monthly" : "lump_sum", amount_rupees: numbers[0] ?? "", years: numbers[1] ?? "", assumed_return_percent: numbers[2] ?? "" });
+  if (system.startsWith("You write short, neutral explainers")) {
+    const list = records(first, "records");
+    if (list.some((record) => /observatory/i.test(record.headline))) {
+      return JSON.stringify({ oneMinute: [{ text: "The new map charts 4,000 stars never seen before.", cites: ["S1"] }], whatHappened: [], whyItMatters: [], keyDetails: [], whatsNext: [], categories: [] });
     }
-    // A symbol in capitals or a six-digit scheme code, as a model would pick the name out of a sentence.
-    return call("search", { query: /[A-Z]{4,}[A-Z0-9]*|\b\d{6}\b/.exec(question)?.[0] ?? question.slice(0, 40) });
+    return JSON.stringify({
+      oneMinute: [{ text: sentence(list[0]!), cites: [list[0]!.ref] }],
+      whatHappened: list.slice(1, 3).map((record) => ({ text: sentence(record), cites: [record.ref] })),
+      whyItMatters: [],
+      // A fact of its own: the product drops a key detail that only repeats what happened.
+      keyDetails: list.length > 1 ? [{ text: `${list[list.length - 1]!.publisher} is among the publishers carrying it.`, cites: [list[list.length - 1]!.ref] }] : [],
+      whatsNext: [],
+      categories: [],
+    });
   }
-  if (last?.matches?.[0]) {
-    const match = last.matches[0];
-    if (match.type === "fund" && tools.includes("fund_overview")) return call("fund_overview", { handle: match.handle });
-    if (/indicator|RSI|technical/i.test(question) && tools.includes("technical_indicators")) return call("technical_indicators", { handle: match.handle });
-    if (tools.includes("instrument_overview")) return call("instrument_overview", { handle: match.handle });
+  if (system.includes("briefing for a newspaper")) {
+    const stories = /<stories>\n([\s\S]*?)\n<\/stories>/.exec(first)?.[1]?.split("\n") ?? [];
+    return JSON.stringify({ lines: stories.map((line) => ({ ref: line.split(" | ")[0]!, text: `${/headline: (.*?) \| note:/.exec(line)?.[1] ?? ""}.` })) });
   }
-  const facts = last?.facts ?? [];
-  if (facts.length === 0) return say(last?.notes?.[0] ?? last?.error ?? "Nothing was available to answer that.");
-  return say(facts.slice(0, 3).map((fact) => `${fact.label}: ${fact.value} [${fact.id}].`).join(" "));
+  if (system.startsWith("You answer a reader's question")) {
+    const question = /<question>([\s\S]*?)<\/question>/.exec(user)?.[1] ?? "";
+    const list = records(first, "records");
+    if (/\bwho\b/i.test(question) && list[0]) return JSON.stringify({ answerable: true, answer: [{ text: sentence(list[0]), cites: [list[0].ref] }] });
+    return JSON.stringify({ answerable: false, answer: [] });
+  }
+  return "I was not asked for anything I recognise.";
 }
 
 export async function startModelStub(): Promise<() => Promise<void>> {
@@ -64,10 +77,9 @@ export async function startModelStub(): Promise<() => Promise<void>> {
         response.writeHead(request.headers.authorization ? 404 : 401).end();
         return;
       }
-      const parsed = JSON.parse(body) as { messages: Message[]; tools?: { function: { name: string } }[] };
-      const message = reply(parsed.messages, (parsed.tools ?? []).map((tool) => tool.function.name));
+      const parsed = JSON.parse(body) as { messages: Message[] };
       response.writeHead(200, { "content-type": "application/json" });
-      response.end(JSON.stringify({ choices: [{ message }], usage: { prompt_tokens: 50, completion_tokens: 20 } }));
+      response.end(JSON.stringify({ choices: [{ message: { role: "assistant", content: reply(parsed.messages) } }], usage: { prompt_tokens: 50, completion_tokens: 20 } }));
     });
   });
   await new Promise<void>((resolve, reject) => {

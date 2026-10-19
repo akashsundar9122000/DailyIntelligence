@@ -1,4 +1,5 @@
 import { NAV_ITEMS } from "../../src/config/navigation";
+import { SECTION_PLANS } from "../../src/config/sections";
 import { expect, test } from "../support/session";
 
 test.describe("the signed-in shell, on a wide screen", () => {
@@ -65,8 +66,11 @@ test.describe("the signed-in shell, on a wide screen", () => {
   });
 
   test("every section still in preparation says so, and shows no stories", async ({ page }) => {
-    await page.goto("/app/briefings");
-    await expect(page.getByText("In preparation")).toBeVisible();
-    await expect(page.getByText("Nothing here is sample news.")).toBeVisible();
+    // Every route still listed in config/sections.ts, so the next section to be built drops out of this test by itself.
+    for (const href of Object.keys(SECTION_PLANS)) {
+      await page.goto(href);
+      await expect(page.getByText("In preparation")).toBeVisible();
+      await expect(page.getByText("Nothing here is sample news.")).toBeVisible();
+    }
   });
 });

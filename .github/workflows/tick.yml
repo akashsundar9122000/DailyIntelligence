@@ -1,6 +1,8 @@
 name: Tick
 
-# Reads every due source, clusters and scores, every fifteen minutes.
+# Reads every due source, clusters and scores, every fifteen minutes; then
+# runs the AI pass (explainers and the edition briefing) as a second request,
+# so a slow model never eats into the time the sources need.
 #
 # GitHub may start a scheduled run 5-20 minutes late under load; the paper
 # shows real freshness times, so lateness is visible rather than hidden, and
@@ -36,10 +38,32 @@ jobs:
           fi
           status=$(curl -sS -o response.json -w '%{http_code}' --max-time 90 \
             -H "Authorization: Bearer $CRON_SECRET" -H "x-trigger: $TRIGGER" "$TICK_URL/api/cron/tick")
-          # The summary names sources and counts only; no secret or content is in it.
-          cat response.json
+          # The summary names sources and counts only; no secret or content is in it. A
+          # failure page is cut short: the status line below is what matters.
+          head -c 2000 response.json
           echo
           if [ "$status" != "200" ]; then
             echo "::error::The tick answered $status."
+            exit 1
+          fi
+      - name: Call the AI pass
+        # Runs even when the tick failed: explainers for the stories already held are still worth writing.
+        if: always()
+        env:
+          TICK_URL: ${{ secrets.TICK_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          TRIGGER: ${{ github.event_name == 'workflow_dispatch' && 'manual' || 'github' }}
+        run: |
+          if [ -z "$TICK_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::TICK_URL and CRON_SECRET must be set as repository secrets."
+            exit 1
+          fi
+          status=$(curl -sS -o response.json -w '%{http_code}' --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" -H "x-trigger: $TRIGGER" "$TICK_URL/api/cron/enrich")
+          # Counts only: no story text, no model output.
+          head -c 600 response.json
+          echo
+          if [ "$status" != "200" ]; then
+            echo "::error::The AI pass answered $status."
             exit 1
           fi

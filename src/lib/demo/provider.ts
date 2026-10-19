@@ -30,6 +30,7 @@ export function sampleEdition(realCount: number, now: Date): SampleCard[] {
       excerpt: story.excerpt,
       category: story.category,
       categories: [story.category],
+      categoriesBy: "rules" as const,
       scope: story.scope,
       states: story.states,
       countries: story.scope === "india" ? ["IN"] : [],

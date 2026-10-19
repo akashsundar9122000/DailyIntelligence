@@ -50,7 +50,7 @@ describe("navigation", () => {
   it("explains every section that is still in preparation, and keeps no stale explanation for one that is built", () => {
     // A destination with no plan and no page would render a 404 from inside the
     // product; a plan left behind for a built page is copy nobody will update.
-    const BUILT = ["/app", "/app/today", "/app/hot", "/app/india", "/app/global", "/app/categories", "/app/search", "/app/saved", "/app/settings"];
+    const BUILT = ["/app", "/app/today", "/app/hot", "/app/india", "/app/global", "/app/categories", "/app/briefings", "/app/search", "/app/saved", "/app/settings"];
     for (const item of NAV_ITEMS) {
       const plan = SECTION_PLANS[item.href];
       if (BUILT.includes(item.href)) {

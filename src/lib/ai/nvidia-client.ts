@@ -46,6 +46,14 @@ export class AiUnavailable extends Error {
   }
 }
 
+/** The run's own time ran out before a model could answer. Not a failure of the model; nothing is recorded against it. */
+export class AiOutOfTime extends AiUnavailable {
+  constructor() {
+    super("The run ran out of time before the model answered.");
+    this.name = "AiOutOfTime";
+  }
+}
+
 /*
  * Measured on 12 October 2026 against the catalogue this key can see: these two
  * answered a tool-calling request in about a second. Three other listed models
@@ -55,6 +63,21 @@ export class AiUnavailable extends Error {
 export const DEFAULT_MODELS = ["nvidia/nemotron-3-super-120b-a12b", "openai/gpt-oss-20b"];
 
 const PER_MODEL_TIMEOUT_MS = 25_000;
+/** Not worth starting a call with less time than this left: it would be cut off before a model could answer. */
+const MIN_CALL_MS = 4_000;
+
+/*
+ * Reasoning turned down, per model family. Measured on 19 October 2026 with
+ * an explainer-sized request: Nemotron answered in 2.7s with thinking off
+ * against 5.8s with it on (and, with it on, added a first name no record
+ * gave); gpt-oss with low effort used a quarter of the tokens. The checks on
+ * the output, not the model's private reasoning, are what keep it grounded.
+ */
+function modelOptions(model: string): Record<string, unknown> {
+  if (model.startsWith("nvidia/nemotron")) return { chat_template_kwargs: { enable_thinking: false } };
+  if (model.startsWith("openai/gpt-oss")) return { reasoning_effort: "low" };
+  return {};
+}
 /** How long a model is left alone after failing: an hour if it is gone, briefly if it is busy. */
 const cooldownFor = (status: number | undefined) => (status === 404 || status === 410 ? 3_600_000 : status === 429 || status === 503 ? 15_000 : 120_000);
 const coolUntil = new Map<string, number>();
@@ -71,7 +94,7 @@ type Wire = { choices?: { message?: { content?: string | null; tool_calls?: Tool
  * while and the next is asked. Temperature is zero: this is retrieval and
  * explanation, and the same question should get the same answer.
  */
-export function nvidiaModel(): ChatModel {
+export function nvidiaModel({ deadline }: { /** Epoch ms after which no call is started or left running: a scheduled run's own budget. */ deadline?: number } = {}): ChatModel {
   const { NVIDIA_API_KEY: key, NVIDIA_BASE_URL: baseUrl } = env();
   if (!key) throw new AiUnavailable("The research assistant is not configured on this deployment.");
   const requestId = uuidv7();
@@ -84,14 +107,18 @@ export function nvidiaModel(): ChatModel {
       // If every model is cooling, try them anyway: a cooldown is a preference, not a ban.
       const ready = models.filter((model) => (coolUntil.get(model) ?? 0) <= now);
       for (const model of ready.length > 0 ? ready : models) {
+        const remaining = deadline === undefined ? PER_MODEL_TIMEOUT_MS : deadline - Date.now() - 1_000;
+        // Out of time is not the model's fault: no cooldown, and the caller records it as unreachable this run.
+        if (remaining < MIN_CALL_MS) throw new AiOutOfTime();
         let status: number | undefined;
         try {
           const response = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
             method: "POST",
-            signal: AbortSignal.timeout(PER_MODEL_TIMEOUT_MS),
+            signal: AbortSignal.timeout(Math.min(PER_MODEL_TIMEOUT_MS, remaining)),
             headers: { authorization: `Bearer ${key}`, "content-type": "application/json", "x-request-id": requestId },
             body: JSON.stringify({
               model,
+              ...modelOptions(model),
               temperature: 0,
               max_tokens: request.maxTokens,
               messages: request.messages,

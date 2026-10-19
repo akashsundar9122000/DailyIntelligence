@@ -316,6 +316,21 @@ export async function previousVisit(userId: string, storyId: string): Promise<st
   return rows[0]?.at ?? null;
 }
 
+/**
+ * When the reader last read here, for "since you last checked": the newest
+ * story opened more than an hour ago, so reading one story a minute ago does
+ * not make the catch-up empty. Null with history off or nothing read.
+ */
+export async function lastSessionAt(userId: string): Promise<string | null> {
+  const rows = await withUser(userId, (tx) =>
+    execRows<{ at: string | null }>(
+      tx,
+      sql`select ${isoInstant(sql`max(last_opened_at)`)} as at from reading_history where user_id = ${userId}::uuid and last_opened_at < now() - interval '1 hour'`,
+    ),
+  );
+  return rows[0]?.at ?? null;
+}
+
 export async function clearHistory(userId: string): Promise<number> {
   const removed = await withUser(userId, (tx) => execRows(tx, sql`delete from reading_history where user_id = ${userId}::uuid returning story_id`));
   return removed.length;

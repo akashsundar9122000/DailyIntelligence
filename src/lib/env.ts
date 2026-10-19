@@ -69,6 +69,8 @@ const schema = z.object({
   NVIDIA_API_KEY: z.string().min(10).optional(),
   NVIDIA_BASE_URL: z.string().url().default("https://integrate.api.nvidia.com/v1"),
   NVIDIA_MODEL: z.string().min(1).optional(),
+  /** Model outputs (explainers and briefings, accepted or rejected) per IST day. A runaway loop costs one day's budget, not a month's. */
+  AI_DAILY_LIMIT: z.coerce.number().int().min(0).max(5000).default(300),
 
   /**
    * GDELT's endpoints. Public and keyless; configurable so the tests can point

@@ -8,6 +8,7 @@
  *   story_updates      dated, evidence-backed developments within a story
  *   story_scores       heat, confidence and importance, with their components
  *   ingestion_runs     one row per fetch of one source, success or not
+ *   ai_briefings       every model output, accepted or rejected, with what it was given
  *
  * All are REFERENCE tables (see ../classification.ts): any reader may SELECT,
  * only the system writes. What a reader may actually SEE is narrower than what
@@ -78,6 +79,26 @@ export type StoryScope = (typeof STORY_SCOPES)[number];
 
 export const RUN_STATUSES = ["running", "ok", "not_modified", "partial", "failed", "skipped"] as const;
 export type RunStatus = (typeof RUN_STATUSES)[number];
+
+/** Who put a story in its sections: the headline rules, or the model when the rules found nothing. */
+export const CATEGORY_METHODS = ["rules", "ai"] as const;
+export type CategoryMethod = (typeof CATEGORY_METHODS)[number];
+
+/**
+ * story_explainer   one story's explainer, from its own source bundle
+ * edition_briefing  the morning or evening briefing, from the day's explainers
+ */
+export const BRIEFING_KINDS = ["story_explainer", "edition_briefing"] as const;
+export type BriefingKind = (typeof BRIEFING_KINDS)[number];
+
+/**
+ * ready     passed validation; may be shown
+ * rejected  the model answered, and the answer failed validation (an uncited
+ *           claim, a number no source gave); kept for the record, never shown
+ * failed    the model could not be reached or did not answer
+ */
+export const BRIEFING_STATUSES = ["ready", "rejected", "failed"] as const;
+export type BriefingStatus = (typeof BRIEFING_STATUSES)[number];
 
 export const UPDATE_VERIFICATIONS = ["sourced", "official", "disputed"] as const;
 export type UpdateVerification = (typeof UPDATE_VERIFICATIONS)[number];
@@ -234,6 +255,8 @@ export const stories = pgTable(
     headlineItemId: uuid("headline_item_id"),
     primaryCategory: text("primary_category"),
     categories: text("categories").array().notNull().default(sql`'{}'::text[]`),
+    /** "ai" only when the rules found no section and the model chose one from the fixed list; the story page says so. */
+    categoriesBy: text("categories_by").$type<CategoryMethod>().notNull().default("rules"),
     /** India when any item's event is in India; global otherwise. A story about both is India. */
     scope: text("scope").$type<StoryScope>().notNull().default("global"),
     eventCountries: text("event_countries").array().notNull().default(sql`'{}'::text[]`),
@@ -274,6 +297,7 @@ export const stories = pgTable(
     index("stories_signature_trgm").using("gin", sql`${t.signature} gin_trgm_ops`),
     check("stories_state_vocab", inVocab("state", STORY_STATES)),
     check("stories_scope_vocab", inVocab("scope", STORY_SCOPES)),
+    check("stories_categories_by_vocab", inVocab("categories_by", CATEGORY_METHODS)),
     check("stories_scores_range", sql`"heat" BETWEEN 0 AND 100 AND "confidence" BETWEEN 0 AND 100 AND "importance" BETWEEN 0 AND 100`),
   ],
 );
@@ -373,5 +397,48 @@ export const ingestionRuns = pgTable(
     index("ingestion_runs_source").on(t.sourceId, t.startedAt.desc()),
     index("ingestion_runs_recent").on(t.startedAt.desc()),
     check("ingestion_runs_status_vocab", inVocab("status", RUN_STATUSES)),
+  ],
+);
+
+/* --------------------------------------------------------------- ai briefings */
+
+/**
+ * Every model output, kept whether or not it was shown. A reader sees only
+ * `ready` rows; `rejected` rows are the record of what validation stopped,
+ * which is how a prompt or a model is judged. Each row names the model, the
+ * prompt version and the exact items the model was given, so any sentence on
+ * a page can be traced to what it was written from.
+ *
+ * `bundle_hash` is the sorted item ids it was written from: when a story gains
+ * an item the hash changes and the explainer is due again.
+ */
+export const aiBriefings = pgTable(
+  "ai_briefings",
+  {
+    id: primaryId(),
+    kind: text("kind").$type<BriefingKind>().notNull(),
+    storyId: uuid("story_id").references(() => stories.id, { onDelete: "cascade" }),
+    /** For an edition briefing: the IST day and the slot, as "2026-10-19:morning". A day is a string. */
+    editionKey: text("edition_key"),
+    status: text("status").$type<BriefingStatus>().notNull(),
+    model: text("model"),
+    promptVersion: text("prompt_version").notNull(),
+    bundleHash: text("bundle_hash").notNull(),
+    sourceItemIds: uuid("source_item_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    /** The validated output for `ready`; the raw answer for `rejected`, so the reason can be read. */
+    content: jsonb("content").$type<unknown>(),
+    /** Why validation refused it, in words. Never a provider error. */
+    rejection: text("rejection"),
+    promptTokens: integer("prompt_tokens"),
+    completionTokens: integer("completion_tokens"),
+    generatedAt: namedTimestamp("generated_at"),
+  },
+  (t) => [
+    index("ai_briefings_story").on(t.storyId, t.kind, t.generatedAt.desc()),
+    index("ai_briefings_edition").on(t.editionKey, t.generatedAt.desc()),
+    index("ai_briefings_recent").on(t.generatedAt.desc()),
+    check("ai_briefings_kind_vocab", inVocab("kind", BRIEFING_KINDS)),
+    check("ai_briefings_status_vocab", inVocab("status", BRIEFING_STATUSES)),
+    check("ai_briefings_subject", sql`("kind" = 'story_explainer' AND "story_id" IS NOT NULL) OR ("kind" = 'edition_briefing' AND "edition_key" IS NOT NULL)`),
   ],
 );

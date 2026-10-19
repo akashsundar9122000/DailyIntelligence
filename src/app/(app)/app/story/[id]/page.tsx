@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AskStory } from "@/components/news/ask-story";
 import { SectionHead } from "@/components/news/edition";
+import { StoryExplainer, type CiteTarget } from "@/components/news/explainer";
 import { ReaderTools } from "@/components/news/reader-tools";
 import { ScoreExplainer } from "@/components/news/score-explainer";
 import { ScorePair } from "@/components/news/score-pair";
@@ -13,7 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { INDIAN_STATES } from "@/config/regions";
 import { requireSession } from "@/lib/auth/session";
+import { aiConfigured } from "@/lib/env";
 import { formatInstant, relativeTime, timesLine } from "@/lib/format/date";
+import { explainerFor } from "@/lib/queries/ai";
 import { getPreferences } from "@/lib/queries/preferences";
 import { relatedStories, storyDetail, type StorySource } from "@/lib/queries/stories";
 import { previousVisit, recordRead, savedStoryIds } from "@/lib/services/reader";
@@ -53,9 +57,9 @@ function plainAccount(detail: NonNullable<Awaited<ReturnType<typeof storyDetail>
   return parts.filter(Boolean).join(" ");
 }
 
-function SourceRow({ source, now }: { source: StorySource; now: Date }) {
+function SourceRow({ source, now, anchor = false }: { source: StorySource; now: Date; /** The citation target: set on one list only, so each id is on the page once. */ anchor?: boolean }) {
   return (
-    <li className="py-4">
+    <li id={anchor ? `source-${source.itemId}` : undefined} className="scroll-mt-24 py-4 target:bg-surface-sunken">
       <div className="flex flex-wrap items-center gap-2">
         <p className="font-semibold text-text-primary">{source.publisher}</p>
         <KindBadge story={source} />
@@ -91,6 +95,12 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
   const sinceLastVisit = lastVisit ? sources.filter((source) => source.ingestedAt > lastVisit) : [];
   const timeline = [...sources].sort((a, b) => (a.publishedAt ?? a.ingestedAt).localeCompare(b.publishedAt ?? b.ingestedAt));
   const account = plainAccount(detail);
+  const explainer = await explainerFor(story.id);
+  // S1, S2 ... are the bundle's records in the order the explainer was given them.
+  const publisherOf = new Map(sources.map((source) => [source.itemId, source.publisher]));
+  const refs: Record<string, CiteTarget> = Object.fromEntries(
+    (explainer?.sourceItemIds ?? []).map((itemId, index) => [`S${index + 1}`, { itemId, publisher: publisherOf.get(itemId) ?? "the source" }]),
+  );
 
   return (
     <article className="mx-auto max-w-[var(--container)]" aria-labelledby="story-headline">
@@ -107,6 +117,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
           {story.state === "developing" ? <Badge tone="press">Developing</Badge> : null}
           <p className="kicker text-text-tertiary">{kickerOf(story)}</p>
           <KindBadge story={story} />
+          {story.categoriesBy === "ai" ? <span className="text-xs text-text-tertiary">Section chosen by AI from the headlines</span> : null}
         </div>
         <h1 id="story-headline" className="mt-3 max-w-5xl text-[clamp(2rem,4.6vw,3.75rem)] font-black leading-[1.03] tracking-[-0.015em]">
           {story.headline}
@@ -129,16 +140,32 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
           <StoryActions storyId={story.id} saved={saved.has(story.id)} url={story.url} />
-          <ReaderTools text={`${story.headline}. ${account}`} />
+          <ReaderTools text={`${story.headline}. ${explainer ? explainer.content.oneMinute.map((claim) => claim.text).join(" ") : account}`} />
         </div>
       </header>
 
       <div className="grid gap-12 pt-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-10">
+          {explainer ? (
+            <StoryExplainer
+              content={explainer.content}
+              refs={refs}
+              initialLength={preferences.readingStyle}
+              model={explainer.model}
+              generatedLabel={relativeTime(explainer.generatedAt, now)}
+              textRead={explainer.content.textRead}
+              stale={explainer.stale}
+              recordCount={explainer.sourceItemIds.length}
+            />
+          ) : null}
+
           <section aria-labelledby="glance">
             <SectionHead id="glance" kicker="From the records" title="At a glance" />
-            <p className="prose-news mt-3 drop-cap">{account}</p>
-            <p className="mt-2 text-xs text-text-tertiary">Written from the source records by rule, not by a model. An AI explainer with citations is added when it is available.</p>
+            <p className={explainer ? "mt-3 font-serif text-base leading-relaxed text-text-secondary" : "prose-news mt-3 drop-cap"}>{account}</p>
+            <p className="mt-2 text-xs text-text-tertiary">
+              Written from the source records by rule, not by a model.
+              {explainer ? "" : story.sourceCount >= 2 || story.officialCount >= 1 ? " An AI explainer with citations is added when one passes its checks." : " An AI explainer is written once a second publisher or an official source reports it."}
+            </p>
             {story.sourceCount === 1 ? (
               <p className="mt-3 border-l-[3px] border-warning bg-warning-subtle px-3 py-2 text-sm text-warning">Limited source coverage: one publisher so far.</p>
             ) : null}
@@ -180,11 +207,13 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
             </ol>
           </section>
 
+          {aiConfigured() ? <AskStory storyId={story.id} recordCount={Math.min(story.sourceCount, 12)} /> : null}
+
           <section aria-labelledby="sources">
             <SectionHead id="sources" kicker={`${sources.length} ${sources.length === 1 ? "report" : "reports"} from ${story.sourceCount} ${story.sourceCount === 1 ? "publisher" : "publishers"}`} title="Every source" />
             <ul className="divide-y divide-border">
               {sources.map((source) => (
-                <SourceRow key={source.itemId} source={source} now={now} />
+                <SourceRow key={source.itemId} source={source} now={now} anchor />
               ))}
             </ul>
           </section>
