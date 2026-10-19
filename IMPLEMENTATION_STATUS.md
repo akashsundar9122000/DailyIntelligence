@@ -12,7 +12,7 @@ The plan is `docs/plan.md`; the scope is `docs/BLUEPRINT.md`.
 | 2 | AI explainers with citations, AI category tagging, briefings, ask about a story, eval set | Done, deployed, verified in production |
 | 3 | Live updates, web push, notification policy, digests, resilience | Done, deployed, verified in production |
 | 4 | Social Pulse, dashboards, admin cluster tools and moderation, semantic search | Done, deployed, verified in production |
-| 5 | Visual explainers, AI cost caps, editorial review, retention purge, hardening, final docs | Done (see below for the deploy check) |
+| 5 | Visual explainers, AI cost caps, editorial review, retention purge, hardening, final docs | Done, deployed, verified in production |
 
 ## Phase 0
 
@@ -285,7 +285,8 @@ Built:
 
 Verified locally:
 
-- `pnpm verify` (see the commit for the counts at the time).
+- `pnpm verify` passed: 204 unit, 36 component, 154 integration and 312
+  end-to-end tests.
 - The policy end to end: every inline script carries the page's nonce, a new
   nonce per request, and a frame from a host not on the list is refused while
   nothing the paper needs is.
@@ -293,6 +294,11 @@ Verified locally:
   for 20 seconds across five public pages: 515 requests a second, p50 39 ms,
   p95 71 ms, no errors. (A first run showed 500s on /login: the build refuses
   the development key, by design; the run was repeated with a throwaway one.)
+
+Verified in production (commit `7ab2ff7`): the smoke suite passed 28 of 28,
+including the nonce policy (with `upgrade-insecure-requests` over https) and
+`security.txt`; the tick workflow and the daily job ran every step -- tick, AI
+pass, notifications, daily, retention -- each recorded `OK` in `job_runs`.
 
 Not done, and why:
 
