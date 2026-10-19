@@ -121,7 +121,8 @@ export function VisualExplainer({ slides, refs }: { slides: Slide[]; refs: Recor
               <SlideBody slide={slide} refs={refs} large />
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Held above the phone's bottom bar: a tall card pushed the controls under it, and a reader could not reach Next. */}
+          <div className="sticky bottom-[var(--bottom-nav-h)] z-10 flex flex-wrap items-center gap-2 border-t border-border bg-canvas py-2">
             <Button variant="ghost" size="sm" disabled={index === 0} onClick={() => setIndex(index - 1)}>
               <ChevronLeft className="size-4" aria-hidden /> Previous
             </Button>
@@ -139,7 +140,7 @@ export function VisualExplainer({ slides, refs }: { slides: Slide[]; refs: Recor
         </div>
       ) : null}
       <details className="text-sm">
-        <summary className="cursor-pointer font-semibold">Transcript of every card</summary>
+        <summary className="cursor-pointer py-3 font-semibold">Transcript of every card</summary>
         <ol className="mt-2 list-decimal space-y-2 pl-5 text-text-secondary">
           {slides.map((entry, number) => (
             <li key={number}>

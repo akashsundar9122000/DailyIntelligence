@@ -66,7 +66,7 @@ export function Dialog({
               ) : null}
             </div>
             <RadixDialog.Close asChild>
-              <Button variant="ghost" size="icon" aria-label="Close">
+              <Button variant="ghost" size="icon" aria-label="Close" className="shrink-0">
                 <X className="size-4" aria-hidden />
               </Button>
             </RadixDialog.Close>

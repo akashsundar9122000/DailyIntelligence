@@ -25,7 +25,10 @@ export function Switch({
   return (
     <div className={cn("flex items-start justify-between gap-4", className)}>
       <div className="min-w-0">
-        <label htmlFor={id} className="block text-sm font-medium text-text-primary">
+        <label
+          htmlFor={id}
+          className="block text-sm font-medium text-text-primary"
+        >
           {label}
         </label>
         {description ? (
@@ -41,7 +44,8 @@ export function Switch({
         disabled={disabled}
         aria-describedby={description ? `${id}-description` : undefined}
         className={cn(
-          "relative h-7 w-12 shrink-0 rounded-full border border-border-input bg-surface-sunken transition-colors",
+          // The track is 28px; the invisible box around it makes the target 44px on touch without a larger switch.
+          "relative h-7 w-12 shrink-0 rounded-full border border-border-input bg-surface-sunken transition-colors coarse:after:absolute coarse:after:-inset-2 coarse:after:content-['']",
           "data-[state=checked]:border-accent data-[state=checked]:bg-accent disabled:opacity-50",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         )}

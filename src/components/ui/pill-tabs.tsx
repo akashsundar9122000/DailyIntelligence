@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { cn } from "./cn";
+import { useScrollEdges } from "./use-scroll-edges";
 
 export type PillTab = { href: string; label: string; /** Current only on this exact path: for a first tab whose address is the parent of the others. */ exact?: boolean };
 
@@ -19,6 +20,7 @@ export type PillTab = { href: string; label: string; /** Current only on this ex
 export function PillTabs({ label, tabs, className }: { label: string; tabs: PillTab[]; className?: string }) {
   const pathname = usePathname();
   const strip = useRef<HTMLUListElement>(null);
+  useScrollEdges(strip);
 
   // On a phone the strip is wider than the screen. Arriving on the fourth tab,
   // the reader must be able to see which tab they are on.
@@ -32,7 +34,7 @@ export function PillTabs({ label, tabs, className }: { label: string; tabs: Pill
 
   return (
     <nav aria-label={label} className={cn("min-w-0", className)}>
-      <ul ref={strip} className="relative flex gap-1 overflow-x-auto border-b border-border-strong [scrollbar-width:none]">
+      <ul ref={strip} className="scroll-fade relative flex gap-1 overflow-x-auto border-b border-border-strong [scrollbar-width:none]">
         {tabs.map((tab) => {
           const current = pathname === tab.href || (!tab.exact && pathname.startsWith(`${tab.href}/`));
           return (

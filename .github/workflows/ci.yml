@@ -50,7 +50,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps chromium webkit
       # The IDENTICAL command to the local gate. If CI ran a different set, the
       # local gate would be theatre and the real one a surprise.
       - run: pnpm verify

@@ -58,7 +58,7 @@ export function SiteHeader() {
       )}
     >
       <div className="mx-auto flex h-16 max-w-[var(--container)] items-center gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2.5" aria-label={`${brand.name}, home`}>
+        <Link href="/" className="flex min-h-11 items-center gap-2.5" aria-label={`${brand.name}, home`}>
           <Mark className="size-8" />
           <Wordmark className={cn("hidden text-xl leading-none transition-opacity sm:inline", home && !pastMasthead && "sm:opacity-0")} />
         </Link>

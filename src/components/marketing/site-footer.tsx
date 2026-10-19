@@ -36,7 +36,7 @@ export function SiteFooter() {
     <footer className="border-t-[3px] border-rule bg-canvas px-4 pb-[calc(var(--safe-bottom)+2.5rem)] pt-10 sm:px-6">
       <div className="mx-auto grid max-w-[var(--container)] gap-10 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
         <div className="space-y-3">
-          <Link href="/" className="inline-flex items-center gap-2.5" aria-label={`${brand.name}, home`}>
+          <Link href="/" className="inline-flex min-h-11 items-center gap-2.5" aria-label={`${brand.name}, home`}>
             <Mark className="size-9" />
             <Wordmark className="text-2xl leading-none" />
           </Link>
@@ -48,10 +48,10 @@ export function SiteFooter() {
         {COLUMNS.map((column) => (
           <nav key={column.title} aria-label={column.title}>
             <p className="kicker text-text-tertiary">{column.title}</p>
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-3 space-y-2 coarse:space-y-0">
               {column.links.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-sm text-text-secondary hover:text-text-primary hover:underline hover:underline-offset-4">
+                  <Link href={link.href} className="text-sm text-text-secondary coarse:flex coarse:min-h-11 coarse:items-center hover:text-text-primary hover:underline hover:underline-offset-4">
                     {link.label}
                   </Link>
                 </li>

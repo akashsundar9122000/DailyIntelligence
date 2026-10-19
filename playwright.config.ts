@@ -54,7 +54,7 @@ export default defineConfig({
     {
       name: "desktop",
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
-      testIgnore: [/motion\.spec\.ts/, /\.mobile\.spec\.ts/],
+      testIgnore: [/motion\.spec\.ts/, /\.mobile\.spec\.ts/, /\.webkit\.spec\.ts/],
     },
 
     /*
@@ -63,7 +63,15 @@ export default defineConfig({
      * 1440px, because a mobile pass that quietly reflows desktop is the failure
      * this is written to avoid.
      */
-    { name: "mobile", use: { ...devices["Pixel 7"] }, testIgnore: [/motion\.spec\.ts/, /\.desktop\.spec\.ts/] },
+    { name: "mobile", use: { ...devices["Pixel 7"] }, testIgnore: [/motion\.spec\.ts/, /\.desktop\.spec\.ts/, /\.webkit\.spec\.ts/] },
+
+    /*
+     * An iPhone, in WebKit. Only the *.webkit.spec.ts journeys: the failures that
+     * passed every Chromium project above and broke on a real iPhone (a dropdown
+     * no tap could use, a hydration error from a date). Running the whole suite
+     * a second time in WebKit would double the gate for little more than that.
+     */
+    { name: "webkit", use: { ...devices["iPhone 14"] }, testMatch: /\.webkit\.spec\.ts/ },
 
     /*
      * Asserts the reduced-motion kill switch actually works. Without a project

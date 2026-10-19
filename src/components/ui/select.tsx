@@ -266,8 +266,10 @@ export function Select<V extends string>({
                     data-index={index}
                     aria-selected={isSelected}
                     aria-disabled={option.disabled || undefined}
-                    // Pressing (not clicking) chooses, before the focus moves out of the search box.
-                    onPointerDown={(event) => event.preventDefault()}
+                    // Keeps focus in the search box while a mouse presses. MOUSEdown, not pointerdown: in
+                    // WebKit a cancelled pointerdown also cancels the tap's click, and on an iPhone no
+                    // option could be chosen at all (found in a WebKit sweep, 19 October 2026).
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => choose(option)}
                     onPointerMove={() => !option.disabled && setActive(index)}
                     className={cn(

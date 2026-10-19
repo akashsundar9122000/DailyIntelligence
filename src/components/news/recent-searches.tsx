@@ -62,11 +62,11 @@ export function RecentSearches({ current }: { current: string }) {
     <div className="flex flex-wrap items-center gap-2 text-sm">
       <span className="kicker text-text-tertiary">Recent</span>
       {recent.map((query) => (
-        <Link key={query} href={`/app/search?q=${encodeURIComponent(query)}`} className="border border-border-strong px-2.5 py-1 text-text-secondary hover:text-text-primary">
+        <Link key={query} href={`/app/search?q=${encodeURIComponent(query)}`} className="inline-flex items-center border border-border-strong px-2.5 py-1 text-text-secondary hover:text-text-primary coarse:min-h-11">
           {query}
         </Link>
       ))}
-      <button type="button" className="ml-1 font-semibold text-text-primary underline underline-offset-4" onClick={() => write([])}>
+      <button type="button" className="ml-1 font-semibold text-text-primary underline underline-offset-4 coarse:min-h-11 coarse:px-2" onClick={() => write([])}>
         Clear
       </button>
     </div>

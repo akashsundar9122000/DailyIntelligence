@@ -128,7 +128,7 @@ export function InterestsSettings({ interests }: { interests: InterestRow[] }) {
           <label htmlFor="word" className="sr-only">
             A word or name
           </label>
-          <input id="word" value={draft.text} onChange={(event) => setDraft((current) => ({ ...current, text: event.target.value }))} placeholder="A word or a name" maxLength={120} className="h-11 flex-1 border border-border-input bg-surface px-3" />
+          <input id="word" value={draft.text} onChange={(event) => setDraft((current) => ({ ...current, text: event.target.value }))} placeholder="A word or a name" maxLength={120} className="h-11 w-full sm:flex-1 border border-border-input bg-surface px-3" />
           <label id="stance-label" htmlFor="stance" className="sr-only">
             Mute or block
           </label>

@@ -237,7 +237,7 @@ export function Questions() {
       {QUESTIONS.map((item, index) => (
         // `faq`: opens to its answer rather than snapping (motion.css).
         <details key={item.q} data-reveal style={{ "--i": index % 2 } as CSSProperties} className="faq group border-t border-border-strong py-5">
-          <summary className="flex cursor-pointer list-none items-start justify-between gap-4 font-display text-xl font-bold leading-snug [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-start coarse:-my-2 coarse:py-2 justify-between gap-4 font-display text-xl font-bold leading-snug [&::-webkit-details-marker]:hidden">
             {item.q}
             <span aria-hidden className="mt-1 text-2xl leading-none text-kicker transition-transform duration-300 ease-spring group-open:rotate-45">
               +

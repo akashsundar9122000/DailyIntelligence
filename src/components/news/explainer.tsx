@@ -18,8 +18,14 @@ export function CitedText({ claim, refs }: { claim: Claim; refs: Record<string, 
         const target = refs[ref];
         if (!target) return null;
         return (
-          <sup key={ref} className="ml-0.5">
-            <a href={`#source-${target.itemId}`} className="font-sans text-[0.7em] font-semibold text-text-secondary underline-offset-2 hover:text-text-primary hover:underline">
+          // Sized in rem, not em: inside a <sup> an em shrinks twice, and the markers came out at 8px.
+          // The link's reach is widened by an invisible box, not padding, so a finger can find it
+          // without the extra height pushing the lines of the sentence apart.
+          <sup key={ref} className="ml-0.5 text-xs leading-none">
+            <a
+              href={`#source-${target.itemId}`}
+              className="relative font-sans font-semibold text-text-secondary underline-offset-2 after:absolute after:-inset-x-1 after:-inset-y-3.5 after:content-[''] hover:text-text-primary hover:underline"
+            >
               [{ref.slice(1)}]<span className="sr-only">: {target.publisher}</span>
             </a>
           </sup>

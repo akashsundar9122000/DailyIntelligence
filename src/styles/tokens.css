@@ -330,6 +330,20 @@
   }
   .prose-news > * + * { margin-top: 1em; }
 
+  /*
+   * A row that scrolls sideways, faded at an edge only while there is more
+   * beyond it (useScrollEdges sets the attributes). Without a cue a phone
+   * showed a tab strip starting mid-word, "ests", and nothing said it moved.
+   * A mask reads only alpha, so the ink token stands for "opaque", not a colour.
+   */
+  .scroll-fade {
+    --fade-start: 0px;
+    --fade-end: 0px;
+    mask-image: linear-gradient(to right, transparent, var(--ink) var(--fade-start), var(--ink) calc(100% - var(--fade-end)), transparent);
+  }
+  .scroll-fade[data-more-start] { --fade-start: 2rem; }
+  .scroll-fade[data-more-end] { --fade-end: 2rem; }
+
   /* A drop cap for the first paragraph of a long read. Decoration only:
      ::first-letter is read aloud as part of the word, so nothing is lost. */
   .drop-cap::first-letter {

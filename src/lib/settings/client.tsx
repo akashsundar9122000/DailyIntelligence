@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { toast } from "@/components/ui/toast";
@@ -51,6 +52,13 @@ function applyAll(preferences: Preferences): void {
 const SAVE_DELAY_MS = 250;
 
 /**
+ * The keys a server-rendered page is built from. After a save that changed one,
+ * the page is fetched again: without it, choosing World in the menu saved the
+ * choice and left the India feed on screen until the next navigation.
+ */
+const SERVER_KEYS = ["defaultScope"] as const satisfies readonly (keyof Preferences)[];
+
+/**
  * The signed-in user's preferences, in the browser.
  *
  * A change is applied immediately and saved a moment later, so dragging through
@@ -64,6 +72,7 @@ export function PreferencesProvider({ initial, children }: { initial: Preference
   const pending = useRef<Partial<Preferences>>({});
   const timer = useRef<number | null>(null);
   const inFlight = useRef(false);
+  const router = useRouter();
 
   /*
    * A preference can also be changed outside this store: the research page
@@ -88,6 +97,7 @@ export function PreferencesProvider({ initial, children }: { initial: Preference
     if (inFlight.current) return;
     inFlight.current = true;
     setSaving(true);
+    let refresh = false;
 
     // A loop, not a re-entry: whatever was changed while a save was in flight
     // is picked up on the next pass, still one request at a time.
@@ -98,6 +108,7 @@ export function PreferencesProvider({ initial, children }: { initial: Preference
 
       if (result?.ok) {
         confirmed.current = result.data;
+        if (SERVER_KEYS.some((key) => key in patch)) refresh = true;
         // Anything changed meanwhile is still pending; keep showing it.
         const merged = { ...result.data, ...pending.current };
         setPreferences(merged);
@@ -112,7 +123,8 @@ export function PreferencesProvider({ initial, children }: { initial: Preference
 
     inFlight.current = false;
     setSaving(false);
-  }, []);
+    if (refresh) router.refresh();
+  }, [router]);
 
   const update = useCallback(
     (patch: Partial<Preferences>) => {

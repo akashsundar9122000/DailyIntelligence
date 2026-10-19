@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { useRef } from "react";
 
 import { cn } from "@/components/ui/cn";
+import { useScrollEdges } from "@/components/ui/use-scroll-edges";
 
 export type ChipLink = { href: string; label: string; current: boolean };
 
@@ -10,9 +14,11 @@ export type ChipLink = { href: string; label: string; current: boolean };
  * scrolls sideways on a phone rather than wrapping into a wall of chips.
  */
 export function ChipNav({ label, chips, className }: { label: string; chips: ChipLink[]; className?: string }) {
+  const row = useRef<HTMLUListElement>(null);
+  useScrollEdges(row);
   return (
     <nav aria-label={label} className={cn("min-w-0", className)}>
-      <ul className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
+      <ul ref={row} className="scroll-fade flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
         {chips.map((chip) => (
           <li key={chip.href} className="shrink-0">
             <Link

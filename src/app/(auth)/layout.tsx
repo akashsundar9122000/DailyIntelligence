@@ -100,7 +100,8 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
             <Wordmark className="text-2xl leading-none" />
           </Link>
         </div>
-        <div className="flex flex-1 items-center justify-center px-5 py-10 sm:px-10">{children}</div>
+        {/* Top-aligned on a phone: centred, the form sat under a 280px empty band and the keyboard covered its button. */}
+        <div className="flex flex-1 items-start justify-center px-5 py-8 sm:items-center sm:px-10 sm:py-10">{children}</div>
       </main>
     </div>
   );

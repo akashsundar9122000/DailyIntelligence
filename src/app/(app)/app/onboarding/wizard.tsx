@@ -359,7 +359,7 @@ export function OnboardingWizard({ initial }: { initial: WizardInitial }) {
               }}
               placeholder={draft.kind === "entity" ? "e.g. ISRO, Chennai Super Kings, Infosys" : "e.g. monsoon, semiconductors"}
               maxLength={120}
-              className="h-11 flex-1 border border-border-input bg-surface px-3"
+              className="h-11 w-full sm:flex-1 border border-border-input bg-surface px-3"
             />
             <Button variant="secondary" size="lg" onClick={() => void addFollow()} disabled={draft.text.trim().length < 2}>
               <Plus className="size-4" aria-hidden /> Follow

@@ -45,28 +45,38 @@ export function formatDay(day: string, format: DateFormat = "long"): string {
 const IST = new Intl.DateTimeFormat("en-IN", {
   timeZone: "Asia/Kolkata",
   day: "numeric",
-  month: "short",
+  month: "numeric",
   year: "numeric",
   hour: "numeric",
   minute: "2-digit",
   hour12: true,
 });
 
-/** An instant in India Standard Time, with the zone stated: "9 Oct 2026, 3:30 pm IST". */
+/**
+ * An instant in India Standard Time, with the zone stated: "9 Oct 2026, 3:30 pm IST".
+ *
+ * Assembled from the parts, not from the formatter's own join: WebKit joins the
+ * same parts as "9 Oct 2026 at 3:30 PM", so a server render and an iPhone's
+ * hydration disagreed and React threw away the page's server HTML (error 418).
+ * The month comes from our own table for the same reason: some ICU versions
+ * write September as "Sept" in en-IN, and others as "Sep".
+ */
 export function formatInstant(iso: string): string {
   const instant = new Date(iso);
   if (Number.isNaN(instant.getTime())) throw new RangeError(`Not an instant: ${iso}`);
-  return `${IST.format(instant).replace(/ /g, " ")} IST`;
+  const part = Object.fromEntries(IST.formatToParts(instant).map(({ type, value }) => [type, value]));
+  return `${part.day} ${MONTHS[Number(part.month) - 1]} ${part.year}, ${part.hour}:${part.minute} ${part.dayPeriod?.toLowerCase()} IST`;
 }
 
 const IST_TIME = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true });
 const IST_DATELINE = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-/** A time of day in IST: "3:30 pm". */
+/** A time of day in IST: "3:30 pm". From the parts, like formatInstant: WebKit writes the period as "PM". */
 export function formatClock(iso: string): string {
   const instant = new Date(iso);
   if (Number.isNaN(instant.getTime())) throw new RangeError(`Not an instant: ${iso}`);
-  return IST_TIME.format(instant).replace(/\u202f/g, " ");
+  const part = Object.fromEntries(IST_TIME.formatToParts(instant).map(({ type, value }) => [type, value]));
+  return `${part.hour}:${part.minute} ${part.dayPeriod?.toLowerCase()}`;
 }
 
 /** The masthead's dateline: "Sunday, 18 October 2026". */

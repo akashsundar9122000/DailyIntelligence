@@ -18,6 +18,7 @@ import { StoryActions } from "@/components/news/story-actions";
 import { KindBadge, kickerOf, StoryCard } from "@/components/news/story-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ShowMore } from "@/components/ui/show-more";
 import { INDIAN_STATES } from "@/config/regions";
 import { buildSlides } from "@/lib/ai/visual";
 import { requireSession } from "@/lib/auth/session";
@@ -68,9 +69,13 @@ function plainAccount(detail: NonNullable<Awaited<ReturnType<typeof storyDetail>
   return parts.filter(Boolean).join(" ");
 }
 
-function SourceRow({ source, now, anchor = false, split }: { source: StorySource; now: Date; /** The citation target: set on one list only, so each id is on the page once. */ anchor?: boolean; /** For an administrator: move this report out of the story. */ split?: ReactNode }) {
+/** How much of each long list a phone shows before "Show all". */
+const TIMELINE_SHOWN = 6;
+const SOURCES_SHOWN = 8;
+
+function SourceRow({ source, now, anchor = false, split, extra = false }: { source: StorySource; now: Date; /** Past the cut on a phone (ShowMore). */ extra?: boolean; /** The citation target: set on one list only, so each id is on the page once. */ anchor?: boolean; /** For an administrator: move this report out of the story. */ split?: ReactNode }) {
   return (
-    <li id={anchor ? `source-${source.itemId}` : undefined} className="scroll-mt-24 py-4 target:bg-surface-sunken">
+    <li id={anchor ? `source-${source.itemId}` : undefined} data-extra={extra ? "" : undefined} className="scroll-mt-24 py-4 target:bg-surface-sunken">
       <div className="flex flex-wrap items-center gap-2">
         <p className="font-semibold text-text-primary">{source.publisher}</p>
         <KindBadge story={source} />
@@ -220,23 +225,25 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
 
           <section aria-labelledby="timeline">
             <SectionHead id="timeline" kicker="Oldest first" title="Coverage timeline" />
-            <ol className="relative mt-4 space-y-5 border-l-2 border-border-strong pl-6">
-              {timeline.map((source) => (
-                <li key={source.itemId} className="relative">
-                  <span aria-hidden className={source.isOfficial ? "absolute -left-[1.95rem] top-1.5 size-3 bg-press-solid" : "absolute -left-[1.95rem] top-1.5 size-3 rounded-full bg-text-primary"} />
-                  <p className="text-xs font-semibold text-text-tertiary">
-                    {source.publishedAt ? formatInstant(source.publishedAt) : `Found ${formatInstant(source.ingestedAt)} (publication time not given)`}
-                  </p>
-                  <p className="mt-0.5 text-sm">
-                    <span className="font-semibold">{source.publisher}</span>
-                    {source.isOfficial ? " issued an official statement: " : " reported: "}
-                    <a href={source.url} target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:underline">
-                      {source.title}
-                    </a>
-                  </p>
-                </li>
-              ))}
-            </ol>
+            <ShowMore total={timeline.length} limit={TIMELINE_SHOWN} noun="reports">
+              <ol className="relative mt-4 space-y-5 border-l-2 border-border-strong pl-6">
+                {timeline.map((source, index) => (
+                  <li key={source.itemId} data-extra={index >= TIMELINE_SHOWN ? "" : undefined} className="relative">
+                    <span aria-hidden className={source.isOfficial ? "absolute -left-[1.95rem] top-1.5 size-3 bg-press-solid" : "absolute -left-[1.95rem] top-1.5 size-3 rounded-full bg-text-primary"} />
+                    <p className="text-xs font-semibold text-text-tertiary">
+                      {source.publishedAt ? formatInstant(source.publishedAt) : `Found ${formatInstant(source.ingestedAt)} (publication time not given)`}
+                    </p>
+                    <p className="mt-0.5 text-sm">
+                      <span className="font-semibold">{source.publisher}</span>
+                      {source.isOfficial ? " issued an official statement: " : " reported: "}
+                      <a href={source.url} target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:underline">
+                        {source.title}
+                      </a>
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </ShowMore>
           </section>
 
           {aiConfigured() ? <AskStory storyId={story.id} recordCount={Math.min(story.sourceCount, 12)} /> : null}
@@ -266,17 +273,20 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
 
           <section aria-labelledby="sources">
             <SectionHead id="sources" kicker={`${sources.length} ${sources.length === 1 ? "report" : "reports"} from ${story.sourceCount} ${story.sourceCount === 1 ? "publisher" : "publishers"}`} title="Every source" />
-            <ul className="divide-y divide-border">
-              {sources.map((source) => (
-                <SourceRow
-                  key={source.itemId}
-                  source={source}
-                  now={now}
-                  anchor
-                  split={admin && sources.length > 1 ? <SplitButton storyId={story.id} itemId={source.itemId} title={source.title} /> : undefined}
-                />
-              ))}
-            </ul>
+            <ShowMore total={sources.length} limit={SOURCES_SHOWN} noun="sources">
+              <ul className="divide-y divide-border">
+                {sources.map((source, index) => (
+                  <SourceRow
+                    key={source.itemId}
+                    source={source}
+                    now={now}
+                    anchor
+                    extra={index >= SOURCES_SHOWN}
+                    split={admin && sources.length > 1 ? <SplitButton storyId={story.id} itemId={source.itemId} title={source.title} /> : undefined}
+                  />
+                ))}
+              </ul>
+            </ShowMore>
           </section>
         </div>
 

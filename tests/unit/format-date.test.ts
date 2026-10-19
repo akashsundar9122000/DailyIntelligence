@@ -32,6 +32,9 @@ describe("instants", () => {
     expect(formatInstant("2026-10-09T10:00:00Z")).toBe("9 Oct 2026, 3:30 pm IST");
     // Late evening UTC is already the next day in India.
     expect(formatInstant("2026-10-09T20:00:00Z")).toBe("10 Oct 2026, 1:30 am IST");
+    // Midnight and noon are where engines' hour cycles part company ("0:00", "12:00").
+    expect(formatInstant("2026-10-09T18:30:00Z")).toBe("10 Oct 2026, 12:00 am IST");
+    expect(formatInstant("2026-10-09T06:30:00Z")).toBe("9 Oct 2026, 12:00 pm IST");
   });
 
   it("rejects what is not an instant", () => {
@@ -48,7 +51,8 @@ describe("relative times", () => {
     expect(relativeTime("2026-10-18T09:00:00Z", now)).toBe("3 hr ago");
     expect(relativeTime("2026-10-17T10:00:00Z", now)).toBe("yesterday");
     expect(relativeTime("2026-10-15T10:00:00Z", now)).toBe("3 days ago");
-    expect(relativeTime("2026-09-01T10:00:00Z", now)).toBe("1 Sept 2026");
+    // "Sep", from our own table: Node's en-IN wrote "Sept" and WebKit "Sep", and the difference broke hydration on an iPhone.
+    expect(relativeTime("2026-09-01T10:00:00Z", now)).toBe("1 Sep 2026");
   });
 
   it("never says a story was published in the future", () => {

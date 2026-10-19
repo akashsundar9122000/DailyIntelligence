@@ -58,7 +58,7 @@ export function AskStory({ storyId, recordCount }: { storyId: string; recordCoun
             onChange={(event) => setQuestion(event.target.value)}
             maxLength={MAX}
             placeholder="Who said it? When? What do the sources disagree on?"
-            className="h-11 flex-1 border border-border-input bg-surface px-3 text-text-primary placeholder:text-text-tertiary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="h-11 w-full sm:flex-1 border border-border-input bg-surface px-3 text-text-primary placeholder:text-text-tertiary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "ask-error" : "ask-note"}
           />

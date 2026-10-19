@@ -5,7 +5,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { Bell, ChevronsLeft, ChevronsRight, Ellipsis, LogOut, Search, SunMoon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { Mark, Wordmark } from "@/components/branding/logo";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { cn } from "@/components/ui/cn";
 import { Dialog } from "@/components/ui/dialog";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import { toast } from "@/components/ui/toast";
+import { useScrollEdges } from "@/components/ui/use-scroll-edges";
 import { brand } from "@/config/brand";
 import { NAV_GROUPS, NAV_ITEMS, navItemFor } from "@/config/navigation";
 import { authClient } from "@/lib/auth/client";
@@ -273,6 +274,8 @@ export function AppShell({ user, notifications, strip, children }: { user: Shell
   const toggleTheme = useThemeToggle();
   const openPalette = useCallback(() => setPaletteOpen(true), []);
   usePaletteShortcut(openPalette);
+  const stripRef = useRef<HTMLDivElement>(null);
+  useScrollEdges(stripRef);
 
   function toggleRail() {
     setRailExpanded(!expanded);
@@ -327,8 +330,8 @@ export function AppShell({ user, notifications, strip, children }: { user: Shell
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header style={{ viewTransitionName: "app-header" }} className="vt-frame chrome flex h-[var(--header-h)] shrink-0 items-center gap-3 border-b border-border-strong px-4 pt-[var(--safe-top)] sm:px-6 print:hidden!">
-          <Link href="/app" aria-label={`${brand.name}, For You`} className="lg:hidden">
+        <header style={{ viewTransitionName: "app-header" }} className="vt-frame chrome flex h-[calc(var(--header-h)+var(--safe-top))] shrink-0 items-center gap-3 border-b border-border-strong px-4 pt-[var(--safe-top)] sm:px-6 print:hidden!">
+          <Link href="/app" aria-label={`${brand.name}, For You`} className="-m-1.5 flex p-1.5 lg:hidden">
             <Mark className="size-8" />
           </Link>
           <div className="min-w-0 flex-1">
@@ -364,7 +367,7 @@ export function AppShell({ user, notifications, strip, children }: { user: Shell
           </Button>
         </header>
 
-        <div className="flex h-10 min-w-0 shrink-0 items-center gap-3 overflow-hidden border-b border-border px-4 text-sm sm:px-6 md:overflow-x-auto print:hidden!" role="region" aria-label="Edition"
+        <div ref={stripRef} className="scroll-fade flex h-10 min-w-0 shrink-0 items-center gap-3 overflow-x-auto border-b border-border px-4 text-sm [scrollbar-width:none] sm:px-6 print:hidden!" role="region" aria-label="Edition"
           // It scrolls sideways on a phone. A scrolling region that cannot take
           // focus cannot be scrolled from a keyboard.
           tabIndex={0}

@@ -107,6 +107,18 @@
     animation: sheen 9s var(--ease-in-out) infinite alternate;
   }
 }
+/*
+ * Where the sheen is on, the headline's words do not rise one by one. A word
+ * that is transformed or blurred is painted on a layer of its own, which the
+ * heading's clipped background does not reach: every animated word came out
+ * transparent, and the landing page had no headline (found in a mobile sweep,
+ * 19 October 2026, in both engines). The sheen is this palette's motion.
+ */
+:root[data-palette="aurora"]:not([data-contrast]) .text-sheen .hero-word,
+:root:not([data-palette]) .text-sheen .hero-word {
+  display: inline;
+  animation: none;
+}
 @keyframes sheen {
   from { background-position: 100% 50%; }
   to { background-position: 0% 50%; }

@@ -29,7 +29,7 @@ export function PostEmbed({ post, now }: { post: PostCard; now: Date }) {
         <span className="text-text-tertiary">{post.authorHandle}</span>
         <span aria-hidden>·</span>
         <time dateTime={post.postedAt}>{relativeTime(post.postedAt, now)}</time>
-        <a href={post.url} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-semibold text-text-primary underline-offset-4 hover:underline">
+        <a href={post.url} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-semibold text-text-primary underline-offset-4 hover:underline coarse:-my-3 coarse:py-3">
           <ExternalLink className="size-3.5" aria-hidden /> Original<span className="sr-only"> post on {platform.name} (opens in a new tab)</span>
         </a>
       </figcaption>
@@ -65,7 +65,7 @@ function VideoEmbed({ post, now }: { post: PostCard; now: Date }) {
         <span className="font-medium text-text-primary">{post.authorName ?? post.authorHandle}</span>
         <span aria-hidden>·</span>
         <time dateTime={post.postedAt}>{relativeTime(post.postedAt, now)}</time>
-        <a href={post.url} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-semibold text-text-primary underline-offset-4 hover:underline">
+        <a href={post.url} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-semibold text-text-primary underline-offset-4 hover:underline coarse:-my-3 coarse:py-3">
           <ExternalLink className="size-3.5" aria-hidden /> Watch on YouTube<span className="sr-only"> (opens in a new tab)</span>
         </a>
       </figcaption>

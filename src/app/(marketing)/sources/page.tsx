@@ -20,7 +20,7 @@ function Entries({ entries }: { entries: DirectoryEntry[] }) {
           <p className="mt-1.5 text-base text-text-secondary">{entry.note}</p>
           <p className="mt-2 text-sm text-text-tertiary">
             Terms read on {formatDay(entry.checkedOn)} ·{" "}
-            <a href={entry.termsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-text-primary underline underline-offset-4">
+            <a href={entry.termsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-text-primary underline underline-offset-4 coarse:-my-3 coarse:py-3">
               Read their terms <ExternalLink className="size-3.5" aria-hidden />
               <span className="sr-only">(opens in a new tab)</span>
             </a>

@@ -14,7 +14,12 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <SiteHeader />
-      <main id="main" tabIndex={-1} className="focus-visible:outline-none">
+      {/*
+        clip, not hidden: an entrance animation that starts off to one side made the document 431px wide
+        on a 390px phone, so the page could be dragged sideways. `hidden` would also stop it, but it makes
+        <main> a scroll container, and the pinned reading scene's sticky stage would stop pinning.
+      */}
+      <main id="main" tabIndex={-1} className="overflow-x-clip focus-visible:outline-none">
         {children}
       </main>
       <SiteFooter />

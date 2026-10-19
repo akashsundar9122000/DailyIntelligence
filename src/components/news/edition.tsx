@@ -20,7 +20,7 @@ export function SectionHead({ kicker, title, href, linkLabel = "See all", id }: 
         </h2>
       </div>
       {href ? (
-        <Link href={href} className="shrink-0 pb-1 text-sm font-semibold underline underline-offset-4">
+        <Link href={href} className="inline-flex shrink-0 items-end pb-1 text-sm font-semibold underline underline-offset-4 coarse:min-h-11">
           {linkLabel}
         </Link>
       ) : null}

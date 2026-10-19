@@ -150,7 +150,9 @@ try {
   const browser = await chromium.launch();
   const storageState = process.env.SHOOT_SIGNED_IN ? await signedInState(browser) : undefined;
 
-  for (const viewport of VIEWPORTS) {
+  // SHOOT_VIEWPORTS=phone: one width only, for a pass that is about one device.
+  const only = process.env.SHOOT_VIEWPORTS?.split(",");
+  for (const viewport of VIEWPORTS.filter((entry) => !only || only.includes(entry.name))) {
     for (const palette of PALETTES) {
     for (const theme of THEMES) {
       const [mode, contrast] = theme.split("-");
