@@ -252,3 +252,20 @@ describe("retrying a failing source", () => {
     expect(offsets.size).toBeGreaterThan(1);
   });
 });
+
+describe("pacing requests to one host", () => {
+  it("leaves a second between two requests to the same host, and none between different hosts", async () => {
+    const { getFrom } = await import("@/lib/ingestion/http");
+    const at: Record<string, number[]> = {};
+    const fetchFn = async (url: string) => {
+      (at[new URL(url).host] ??= []).push(Date.now());
+      return new Response("ok");
+    };
+    const deadline = Date.now() + 10_000;
+    await getFrom(fetchFn as never, "https://pace-a.example/1", { deadline });
+    await getFrom(fetchFn as never, "https://pace-b.example/1", { deadline });
+    await getFrom(fetchFn as never, "https://pace-a.example/2", { deadline });
+    expect(at["pace-a.example"]![1]! - at["pace-a.example"]![0]!).toBeGreaterThanOrEqual(950);
+    expect(at["pace-b.example"]![0]! - at["pace-a.example"]![0]!).toBeLessThan(500);
+  });
+});

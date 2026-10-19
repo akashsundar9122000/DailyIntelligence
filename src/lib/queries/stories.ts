@@ -303,3 +303,25 @@ export const editionCounts = cache(async (withinHours = 48) => {
     throw error;
   }
 });
+
+/**
+ * How many showable stories were first seen after `since`, for the "new
+ * stories" banner. A count and the newest time only: the banner offers to
+ * load them, it does not push them into a page someone is reading.
+ */
+export async function newStoriesSince(since: string, scope?: "india" | "global"): Promise<{ count: number; newest: string | null }> {
+  try {
+    const rows = await withPublic((tx) =>
+      execRows<{ count: number; newest: string | null }>(
+        tx,
+        sql`select count(*)::int as count, ${isoInstant(sql`max(st.first_seen_at)`)} as newest
+              from stories st join raw_source_items i on i.id = st.headline_item_id join sources src on src.id = i.source_id
+             where ${showableSource()} and not i.quarantined and st.first_seen_at > ${since}::timestamptz ${scope ? sql`and st.scope = ${scope}` : sql``}`,
+      ),
+    );
+    return rows[0] ?? { count: 0, newest: null };
+  } catch (error) {
+    if (error instanceof DatabaseNotConfigured) return { count: 0, newest: null };
+    throw error;
+  }
+}

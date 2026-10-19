@@ -81,7 +81,7 @@ function fakeInternet(overrides: Record<string, () => Response> = {}) {
 }
 
 beforeEach(async () => {
-  await ownerQuery("truncate sources, raw_source_items, stories, story_items, story_updates, story_scores, ingestion_runs, job_runs cascade");
+  await ownerQuery("truncate sources, raw_source_items, stories, story_items, story_updates, story_scores, ingestion_runs, job_runs, ops_switches cascade");
 });
 
 const counts = async () =>
@@ -228,6 +228,43 @@ describe("the first GDELT run", () => {
     expect(run.status).toBe("failed");
     expect(run.inserted).toBe(0);
     expect(run.error).toMatch(/^No knowledge-graph file in the last four hours \(UTC \d{4} 404, /);
+  });
+});
+
+describe("health and switches", () => {
+  it("calls a source stale when it answers but has had nothing new for longer than its kind allows", async () => {
+    const internet = fakeInternet();
+    await runTick({ trigger: "test", budgetMs: 20_000, fetchFn: internet.fetchFn });
+    // PIB is official: a week of silence is allowed, ten days is not.
+    await ownerQuery("update sources set newest_item_at = now() - interval '10 days', next_poll_at = now() where key = 'pib-english'");
+    await runTick({ trigger: "test", budgetMs: 20_000, fetchFn: internet.fetchFn });
+    const pib = (await ownerQuery<{ health_status: string }>("select health_status from sources where key = 'pib-english'"))[0]!;
+    expect(pib.health_status).toBe("stale");
+    await ownerQuery("update sources set newest_item_at = now() - interval '2 days', next_poll_at = now() where key = 'pib-english'");
+    await runTick({ trigger: "test", budgetMs: 20_000, fetchFn: internet.fetchFn });
+    expect((await ownerQuery<{ health_status: string }>("select health_status from sources where key = 'pib-english'"))[0]!.health_status).toBe("healthy");
+  });
+
+  it("reads nothing while ingestion is switched off, and says so in the run", async () => {
+    await ownerQuery("insert into ops_switches (key, enabled, reason) values ('ingestion', false, 'test') on conflict (key) do update set enabled = false");
+    try {
+      const internet = fakeInternet();
+      const { detail } = await runTick({ trigger: "test", budgetMs: 20_000, fetchFn: internet.fetchFn });
+      expect(detail).toMatchObject({ sources: [], paused: ["ingestion"] });
+      expect(internet.calls).toEqual([]);
+    } finally {
+      await ownerQuery("delete from ops_switches");
+    }
+  });
+
+  it("skips one provider's sources while that provider is switched off", async () => {
+    await ownerQuery("insert into ops_switches (key, enabled, reason) values ('provider:rss', false, 'test') on conflict (key) do update set enabled = false");
+    try {
+      const { detail } = await runTick({ trigger: "test", budgetMs: 20_000, fetchFn: fakeInternet().fetchFn });
+      expect(detail.sources.map((run) => run.source)).toEqual(["gdelt-gkg"]);
+    } finally {
+      await ownerQuery("delete from ops_switches");
+    }
   });
 });
 

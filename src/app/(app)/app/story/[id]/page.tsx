@@ -20,6 +20,7 @@ import { formatInstant, relativeTime, timesLine } from "@/lib/format/date";
 import { explainerFor } from "@/lib/queries/ai";
 import { getPreferences } from "@/lib/queries/preferences";
 import { relatedStories, storyDetail, type StorySource } from "@/lib/queries/stories";
+import { markOpened } from "@/lib/services/notifications";
 import { previousVisit, recordRead, savedStoryIds } from "@/lib/services/reader";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -78,9 +79,12 @@ function SourceRow({ source, now, anchor = false }: { source: StorySource; now: 
   );
 }
 
-export default async function StoryPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function StoryPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ n?: string }> }) {
   const { id } = await params;
   const session = await requireSession();
+  // Arrived from a notification: record that it was opened. Someone else's id changes nothing.
+  const { n } = await searchParams;
+  if (n) await markOpened(session.user.id, n);
   const now = new Date();
   const detail = await storyDetail(id);
   // A story that does not exist and one that may not be shown answer the same.

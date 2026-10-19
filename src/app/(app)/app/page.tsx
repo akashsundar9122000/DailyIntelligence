@@ -6,6 +6,7 @@ import { ChipNav } from "@/components/news/chip-nav";
 import { BriefingColumn, HotColumn } from "@/components/news/sidebar";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
+import { NewStories } from "@/components/news/new-stories";
 import { CATEGORIES, isCategorySlug } from "@/config/categories";
 import { SCOPE_LABELS } from "@/config/regions";
 import { requireSession } from "@/lib/auth/session";
@@ -62,6 +63,7 @@ export default async function ForYouPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="mx-auto max-w-[var(--container)] space-y-6">
+      <NewStories renderedAt={now.toISOString()} scope={preferences.defaultScope === "both" ? undefined : preferences.defaultScope} />
       <PageHeader
         kicker={`${SCOPE_LABELS[preferences.defaultScope]} edition`}
         title={firstName ? `For you, ${firstName}` : "For you"}

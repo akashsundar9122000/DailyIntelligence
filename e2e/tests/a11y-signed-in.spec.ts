@@ -19,6 +19,7 @@ const ROUTES = [
   "/app/settings/account",
   "/app/settings/interests",
   "/app/settings/reading",
+  "/app/settings/notifications",
   "/app/settings/appearance",
   "/app/settings/security",
   "/app/settings/data",

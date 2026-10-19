@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 
 import { execRows, withSystem, type Tx } from "@/lib/db/scope";
@@ -10,6 +10,7 @@ import { textArray, uuidArray } from "@/lib/db/sql";
 import type { ContentType, Provider } from "@/lib/db/schema/news";
 import { confidence, heat, importance, SCORE_VERSION, storyState, type StoryFacts } from "@/lib/ranking/scores";
 import { recordedJob } from "@/lib/services/jobs";
+import { switchesOff } from "@/lib/services/ops";
 
 import { normalizeTitle, sameStory, significantTokens, titleSignature, urlHash } from "./normalize";
 import { ADAPTERS, syncCatalogue } from "./registry";
@@ -30,6 +31,8 @@ import { SourceError, type FetchFn, type IncomingItem, type SourceContext } from
 type SourceRow = SourceContext & {
   id: string;
   provider: Provider;
+  /** aggregator, publisher, official, research...: decides how long silence may last before "stale". */
+  sourceType: string;
   pollIntervalSeconds: number;
   consecutiveFailures: number;
   excerptAllowed: boolean;
@@ -261,6 +264,36 @@ function jitterSeconds(key: string, attempt: number, spread: number): number {
   return digest.readUInt16BE(0) % spread;
 }
 
+/**
+ * How long a source may answer without anything new before it is "stale".
+ * By kind, from how often each kind really publishes: GDELT always has
+ * something within the hour; arXiv is silent at weekends; the Federal Reserve
+ * can go days without a release. A source that answers 200 with nothing new
+ * for longer than this is not healthy, whatever its status code says.
+ */
+export function staleAfterHours(sourceType: string): number {
+  switch (sourceType) {
+    case "aggregator":
+      return 6;
+    case "research":
+      return 96;
+    case "official":
+      return 168;
+    default:
+      return 36;
+  }
+}
+
+/**
+ * The health of a source that answered: healthy, or stale when its newest item
+ * is older than its kind allows. `newest` is this run's newest item: an UPDATE
+ * reads the row's old value, so without it a run that just brought fresh items
+ * would be judged on the last run's.
+ */
+function answeredHealth(sourceType: string, newest: string | null = null): SQL {
+  return sql`case when greatest(newest_item_at, ${newest}::timestamptz) < now() - make_interval(hours => ${staleAfterHours(sourceType)}) then 'stale' else 'healthy' end`;
+}
+
 /** The next time to ask a source, after a success or after the Nth failure in a row. */
 export function nextPollDelaySeconds(source: { key: string; pollIntervalSeconds: number }, failures: number): number {
   if (failures === 0) return source.pollIntervalSeconds;
@@ -287,7 +320,7 @@ export async function runSource(source: SourceRow, trigger: string, deadline: nu
       result.status = "not_modified";
       await withSystem("ingest.not-modified", async (tx) => {
         await tx.execute(sql`
-          update sources set last_success_at = now(), consecutive_failures = 0, health_status = 'healthy', last_error = null,
+          update sources set last_success_at = now(), consecutive_failures = 0, health_status = ${answeredHealth(source.sourceType)}, last_error = null,
                              leased_until = null, next_poll_at = now() + make_interval(secs => ${source.pollIntervalSeconds}),
                              cursor = coalesce(${outcome.cursor ? JSON.stringify(outcome.cursor) : null}::jsonb, cursor), updated_at = now()
            where id = ${source.id}::uuid`);
@@ -308,7 +341,7 @@ export async function runSource(source: SourceRow, trigger: string, deadline: nu
       result.clustered = touched.size;
       for (const storyId of touched) await refreshStory(tx, storyId);
       await tx.execute(sql`
-        update sources set last_success_at = now(), consecutive_failures = 0, health_status = 'healthy', last_error = null, leased_until = null,
+        update sources set last_success_at = now(), consecutive_failures = 0, health_status = ${answeredHealth(source.sourceType, outcome.newestAt ?? null)}, last_error = null, leased_until = null,
                            next_poll_at = now() + make_interval(secs => ${source.pollIntervalSeconds}),
                            etag = coalesce(${outcome.etag ?? null}, etag), last_modified = coalesce(${outcome.lastModified ?? null}, last_modified),
                            cursor = coalesce(${outcome.cursor ? JSON.stringify(outcome.cursor) : null}::jsonb, cursor),
@@ -353,32 +386,17 @@ export async function runSource(source: SourceRow, trigger: string, deadline: nu
  * leased by an overlapping tick. FOR UPDATE SKIP LOCKED, so two ticks that run
  * at once take different sources instead of the same one twice.
  */
-async function leaseNextDue(exclude: string[]): Promise<SourceRow | null> {
-  const rows = await withSystem("ingest.lease", (tx) =>
-    execRows<{
-      id: string; key: string; name: string; provider: Provider; feed_url: string; canonical_domain: string; is_official: boolean;
-      language: string; country_or_region: string; categories: string[]; etag: string | null; last_modified: string | null;
-      cursor: Record<string, unknown>; config: Record<string, unknown>; poll_interval_seconds: number; consecutive_failures: number;
-      excerpt_display_allowed: boolean; media_reuse_allowed: boolean; retention_days: number | null; source_type: string;
-    }>(
-      tx,
-      sql`update sources set leased_until = now() + interval '3 minutes'
-           where id = (
-             select id from sources
-              where enabled and rights_status = 'cleared' and next_poll_at <= now()
-                and (leased_until is null or leased_until < now())
-                and (circuit_open_until is null or circuit_open_until < now())
-                and not (id = any(${uuidArray(exclude)}))
-              order by priority, next_poll_at
-              limit 1
-              for update skip locked)
-          returning id, key, name, provider, feed_url, canonical_domain, is_official, language, country_or_region, categories, etag,
-                    last_modified, cursor, config, poll_interval_seconds, consecutive_failures, excerpt_display_allowed,
-                    media_reuse_allowed, retention_days, source_type`,
-    ),
-  );
-  const row = rows[0];
-  if (!row) return null;
+type LeasedRow = {
+  id: string; key: string; name: string; provider: Provider; feed_url: string; canonical_domain: string; is_official: boolean;
+  language: string; country_or_region: string; categories: string[]; etag: string | null; last_modified: string | null;
+  cursor: Record<string, unknown>; config: Record<string, unknown>; poll_interval_seconds: number; consecutive_failures: number;
+  excerpt_display_allowed: boolean; media_reuse_allowed: boolean; retention_days: number | null; source_type: string;
+};
+const LEASED_COLUMNS = sql`id, key, name, provider, feed_url, canonical_domain, is_official, language, country_or_region, categories, etag,
+  last_modified, cursor, config, poll_interval_seconds, consecutive_failures, excerpt_display_allowed, media_reuse_allowed, retention_days, source_type`;
+
+/** A source row as the adapters and the pipeline use it. */
+function toSourceRow(row: LeasedRow): SourceRow {
   const contentType: ContentType = row.source_type === "official" ? "official_statement" : row.source_type === "research" ? "preprint" : "report";
   return {
     id: row.id,
@@ -401,7 +419,31 @@ async function leaseNextDue(exclude: string[]): Promise<SourceRow | null> {
     excerptAllowed: row.excerpt_display_allowed,
     mediaAllowed: row.media_reuse_allowed,
     retentionDays: row.retention_days,
+    sourceType: row.source_type,
   };
+}
+
+async function leaseNextDue(exclude: string[], providersOff: string[] = []): Promise<SourceRow | null> {
+  const rows = await withSystem("ingest.lease", (tx) =>
+    execRows<LeasedRow>(
+      tx,
+      sql`update sources set leased_until = now() + interval '3 minutes'
+           where id = (
+             select id from sources
+              where enabled and rights_status = 'cleared' and next_poll_at <= now()
+                and (leased_until is null or leased_until < now())
+                and (circuit_open_until is null or circuit_open_until < now())
+                and not (id = any(${uuidArray(exclude)}))
+                and not (provider = any(${textArray(providersOff)}))
+              order by priority, next_poll_at
+              limit 1
+              for update skip locked)
+          returning ${LEASED_COLUMNS}`,
+    ),
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return toSourceRow(row);
 }
 
 /**
@@ -428,7 +470,7 @@ async function rescoreRecent(deadline: number, skip: Set<string>): Promise<numbe
   return done;
 }
 
-export type TickSummary = { sources: RunResult[]; rescored: number; catalogue: number; [key: string]: unknown };
+export type TickSummary = { sources: RunResult[]; rescored: number; catalogue: number; paused?: string[]; [key: string]: unknown };
 
 /**
  * One tick of the scheduler. Reads due sources until the budget is spent;
@@ -440,15 +482,44 @@ export async function runTick({ trigger, budgetMs = 50_000, fetchFn = fetch }: {
   return recordedJob<TickSummary>("tick", trigger, async () => {
     const deadline = Date.now() + budgetMs;
     const catalogue = await withSystem("ingest.sync", (tx) => syncCatalogue(tx));
+    // Switches from the press room. Off is recorded in the run, so a paused paper is never mistaken for a quiet news day.
+    const off = await switchesOff();
+    const paused = [...off].filter((key) => key === "ingestion" || key.startsWith("provider:"));
+    if (off.has("ingestion")) return { catalogue, sources: [], rescored: 0, paused };
+    const providersOff = paused.filter((key) => key.startsWith("provider:")).map((key) => key.slice("provider:".length));
     const results: RunResult[] = [];
     const seen: string[] = [];
     while (Date.now() < deadline - 6_000) {
-      const source = await leaseNextDue(seen);
+      const source = await leaseNextDue(seen, providersOff);
       if (!source) break;
       seen.push(source.id);
       results.push(await runSource(source, trigger, deadline - 3_000, fetchFn));
     }
     const rescored = await rescoreRecent(deadline - 1_000, new Set());
-    return { catalogue, sources: results, rescored };
+    return { catalogue, sources: results, rescored, paused };
   });
+}
+
+export type DryRun = { status: "ok" | "not_modified" | "failed"; fetched: number; quarantined: number; sample: string[]; error: string | null; ms: number };
+
+/**
+ * Read one source the way a tick would, and store nothing: no items, no
+ * cursor, no health. For an administrator checking a feed before switching it
+ * on, or after it started failing. Conditional headers are left off so the
+ * answer is the feed as it is, not "not modified since last time".
+ */
+export async function dryRunSource(sourceId: string, fetchFn: FetchFn = fetch): Promise<DryRun> {
+  const started = Date.now();
+  const row = (await withSystem("ingest.dry-run", (tx) => execRows<LeasedRow>(tx, sql`select ${LEASED_COLUMNS} from sources where id = ${sourceId}::uuid`)))[0];
+  if (!row) return { status: "failed", fetched: 0, quarantined: 0, sample: [], error: "No such source.", ms: 0 };
+  const source = { ...toSourceRow(row), etag: null, lastModified: null };
+  const adapter = ADAPTERS[source.provider];
+  if (!adapter) return { status: "failed", fetched: 0, quarantined: 0, sample: [], error: "No adapter for this provider.", ms: 0 };
+  try {
+    const outcome = await adapter.read(source, { fetch: fetchFn, deadline: Date.now() + 20_000 });
+    if (outcome.status === "not_modified") return { status: "not_modified", fetched: 0, quarantined: 0, sample: [], error: null, ms: Date.now() - started };
+    return { status: "ok", fetched: outcome.items.length, quarantined: outcome.quarantined.length, sample: outcome.items.slice(0, 3).map((item) => item.title), error: null, ms: Date.now() - started };
+  } catch (error) {
+    return { status: "failed", fetched: 0, quarantined: 0, sample: [], error: error instanceof SourceError ? error.message : "The read failed.", ms: Date.now() - started };
+  }
 }

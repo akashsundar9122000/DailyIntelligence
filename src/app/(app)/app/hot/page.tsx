@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChipNav } from "@/components/news/chip-nav";
 import { DemoBanner, EmptyEdition, StoryList } from "@/components/news/edition";
 import { PageHeader } from "@/components/ui/page-header";
+import { NewStories } from "@/components/news/new-stories";
 import { CATEGORIES, isCategorySlug } from "@/config/categories";
 import { requireSession } from "@/lib/auth/session";
 import { sampleEdition } from "@/lib/demo/provider";
@@ -48,6 +49,7 @@ export default async function HotPage({ searchParams }: { searchParams: Promise<
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      <NewStories renderedAt={now.toISOString()} scope={scope} />
       <PageHeader
         kicker="Ranked by heat"
         title="Hot now"

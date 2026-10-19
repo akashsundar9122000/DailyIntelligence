@@ -36,6 +36,20 @@
       "when": 1792377913248,
       "tag": "0004_ai_access_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792380692893,
+      "tag": "0005_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792380697265,
+      "tag": "0006_notification_access_rules",
+      "breakpoints": true
     }
   ]
 }

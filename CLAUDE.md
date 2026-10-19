@@ -86,6 +86,12 @@ e2e/                  Playwright: tests/ (desktop, Pixel 7, reduced motion, axe)
 - **Prompts are versioned.** Change a prompt's words, change its
   `*_PROMPT_VERSION`; every stored output names the version that wrote it.
   `pnpm eval:ai` runs the live model on fixed bundles after any prompt change.
+- **Heat alone never notifies.** `decide()` (`src/lib/notifications/policy.ts`)
+  needs confidence and, except for breaking news, a follow. Every decision is
+  one `notification_events` row per reader and dedupe key; "sent" means handed
+  over, never "delivered".
+- **A missing `ops_switches` row is ON.** Switches stop things; a forgotten row
+  must never be what stops the paper.
 - **Heat is not confidence.** Two scores, stored with their components and a
   version, shown side by side. Nothing may combine them into one number.
 - **Newsprint: one spot colour.** Press red means breaking, live or wrong, and

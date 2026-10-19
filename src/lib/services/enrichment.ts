@@ -13,6 +13,7 @@ import { textArray, uuidArray } from "@/lib/db/sql";
 import { aiConfigured, env } from "@/lib/env";
 
 import { recordedJob } from "./jobs";
+import { isOn } from "./ops";
 
 /*
  * The AI pass, run by the scheduler after each tick: explainers for the
@@ -55,6 +56,8 @@ export function briefingSlot(now: Date): { key: string; slot: "morning" | "eveni
 type Outcome = "ready" | "rejected" | "failed" | "skipped";
 export type EnrichSummary = {
   configured: boolean;
+  /** Switched off in the press room. */
+  paused?: boolean;
   explained: number;
   rejected: number;
   failed: number;
@@ -224,6 +227,7 @@ export async function runEnrichment({ trigger, budgetMs = 50_000, model }: { tri
     const now = new Date();
     const deadline = Date.now() + budgetMs;
     if (!model && !aiConfigured()) return { configured: false, explained: 0, rejected: 0, failed: 0, dailyCallsLeft: 0, briefing: null };
+    if (!(await isOn("ai"))) return { configured: true, paused: true, explained: 0, rejected: 0, failed: 0, dailyCallsLeft: 0, briefing: null };
     // The model gets the run's deadline: a call never outlives the request that made it.
     const chat = model ?? nvidiaModel({ deadline: deadline - 2_000 });
     let left = await callsLeftToday(now);

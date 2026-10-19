@@ -9,6 +9,8 @@ if (!process.env.DATABASE_URL_TEST) {
 }
 
 import { E2E_ADMIN_EMAIL } from "./e2e/support/admin";
+import { PUSH_TLS } from "./e2e/support/push-tls";
+import { E2E_VAPID } from "./e2e/support/vapid";
 import { E2E_CRON_SECRET } from "./e2e/support/cron";
 import { MODEL_STUB_PORT } from "./e2e/support/model-stub";
 
@@ -130,6 +132,14 @@ export default defineConfig({
        * only the address. The key is a placeholder; the stand-in checks only
        * that one was sent.
        */
+      /* Push keys for this run only, made when the config loads (e2e/support/vapid.ts): the
+         settings page offers notifications only when push is configured, and no key is committed. */
+      WEB_PUSH_PUBLIC_KEY: E2E_VAPID.publicKey,
+      WEB_PUSH_PRIVATE_KEY: E2E_VAPID.privateKey,
+      WEB_PUSH_SUBJECT: "https://localhost.invalid",
+      /* Trust the stand-in push service's certificate (e2e/support/push-tls.ts), and only for this server. */
+      NODE_EXTRA_CA_CERTS: PUSH_TLS.cert,
+
       NVIDIA_API_KEY: "end-to-end-placeholder",
       NVIDIA_BASE_URL: `http://127.0.0.1:${MODEL_STUB_PORT}/v1`,
       NVIDIA_MODEL: "stub/scripted",

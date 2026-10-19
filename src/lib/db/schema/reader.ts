@@ -15,6 +15,12 @@ import {
   INTEREST_STANCES,
   REPORT_REASONS,
   REPORT_STATUSES,
+  NOTIFICATION_CHANNELS,
+  NOTIFICATION_KINDS,
+  NOTIFICATION_STATUSES,
+  type NotificationChannel,
+  type NotificationKind,
+  type NotificationStatus,
   type FeedbackKind,
   type InterestKind,
   type InterestOrigin,
@@ -237,4 +243,68 @@ export const auditEvents = pgTable(
     createdAt: namedTimestamp("created_at"),
   },
   (t) => [index("audit_events_recent").on(t.createdAt.desc())],
+);
+
+/* ------------------------------------------------------------ notifications */
+
+/**
+ * One browser or device that may receive push. The endpoint and keys are what
+ * the browser gave us; they are not secrets of ours, but they are personal, so
+ * the row is the reader's own. A subscription the push service reports gone
+ * (404, 410) is revoked, not retried for ever.
+ */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: primaryId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    /** "Chrome on macOS": shown in Settings so the reader can tell devices apart. Never the full user agent. */
+    label: text("label").notNull(),
+    createdAt: namedTimestamp("created_at"),
+    lastSuccessAt: optionalTimestamp("last_success_at"),
+    failures: integer("failures").notNull().default(0),
+    revokedAt: optionalTimestamp("revoked_at"),
+  },
+  (t) => [uniqueIndex("push_subscriptions_endpoint").on(t.endpoint), index("push_subscriptions_user").on(t.userId)],
+);
+
+/**
+ * Every notification considered for a reader, sent or not. `dedupe_key` is
+ * unique per reader, so the same story cannot alert the same reader twice
+ * however many runs consider it.
+ */
+export const notificationEvents = pgTable(
+  "notification_events",
+  {
+    id: primaryId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    storyId: uuid("story_id").references(() => stories.id, { onDelete: "set null" }),
+    kind: text("kind").$type<NotificationKind>().notNull(),
+    channel: text("channel").$type<NotificationChannel>().notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    status: text("status").$type<NotificationStatus>().notNull(),
+    /** Why it was suppressed or failed, in words. */
+    reason: text("reason"),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    url: text("url").notNull(),
+    createdAt: namedTimestamp("created_at"),
+    sentAt: optionalTimestamp("sent_at"),
+    openedAt: optionalTimestamp("opened_at"),
+  },
+  (t) => [
+    uniqueIndex("notification_events_dedupe").on(t.userId, t.dedupeKey),
+    index("notification_events_user_recent").on(t.userId, t.createdAt.desc()),
+    index("notification_events_status").on(t.status, t.createdAt),
+    check("notification_events_kind_vocab", inVocab("kind", NOTIFICATION_KINDS)),
+    check("notification_events_channel_vocab", inVocab("channel", NOTIFICATION_CHANNELS)),
+    check("notification_events_status_vocab", inVocab("status", NOTIFICATION_STATUSES)),
+  ],
 );

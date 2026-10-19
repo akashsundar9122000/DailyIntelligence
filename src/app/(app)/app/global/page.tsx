@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChipNav } from "@/components/news/chip-nav";
 import { DemoBanner, EmptyEdition, FrontLayout } from "@/components/news/edition";
 import { PageHeader } from "@/components/ui/page-header";
+import { NewStories } from "@/components/news/new-stories";
 import { WORLD_REGIONS, type WorldRegion } from "@/config/regions";
 import { requireSession } from "@/lib/auth/session";
 import { sampleEdition } from "@/lib/demo/provider";
@@ -36,6 +37,7 @@ export default async function GlobalPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="mx-auto max-w-[var(--container)] space-y-6">
+      <NewStories renderedAt={now.toISOString()} scope={"global"} />
       <PageHeader kicker="World edition" title={regionLabel ? `World · ${regionLabel}` : "The world"} description="Stories by where they happened, not where they were published. A story touching several regions appears in each." />
       <ChipNav
         label="Filter by region"

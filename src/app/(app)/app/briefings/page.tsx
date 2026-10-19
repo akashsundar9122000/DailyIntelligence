@@ -12,6 +12,7 @@ import { formatInstant, relativeTime } from "@/lib/format/date";
 import { latestEditionBriefing, oneMinuteFor } from "@/lib/queries/ai";
 import { getPreferences } from "@/lib/queries/preferences";
 import { frontPage, type StoryCard } from "@/lib/queries/stories";
+import { markOpened } from "@/lib/services/notifications";
 import { lastSessionAt, listInterests } from "@/lib/services/reader";
 
 export const metadata: Metadata = { title: "Briefings" };
@@ -60,8 +61,10 @@ function BriefLine({ story, line, now }: { story: StoryCard; line: string | unde
  * section round-ups are a selection and an order made from the records, each
  * line the story's own checked one-minute sentence, labelled as AI.
  */
-export default async function BriefingsPage() {
+export default async function BriefingsPage({ searchParams }: { searchParams: Promise<{ n?: string }> }) {
   const session = await requireSession();
+  const { n } = await searchParams;
+  if (n) await markOpened(session.user.id, n);
   const now = new Date();
   const preferences = await getPreferences(session.user.id);
   const edition = await latestEditionBriefing();

@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { getSession } from "@/lib/auth/session";
 import { formatInstant, relativeTime } from "@/lib/format/date";
-import { adminOverview, isAdmin } from "@/lib/services/admin";
+import { adminNotifications, adminOverview, isAdmin } from "@/lib/services/admin";
+import { listSwitches } from "@/lib/services/ops";
 
+import { DryRunButton, OpsSwitch, TestSend } from "./ops-controls";
 import { SourceSwitch } from "./source-switch";
 
 export const metadata: Metadata = { title: "Administration" };
@@ -25,7 +27,10 @@ export default async function AdminPage() {
   if (!(await isAdmin(session))) notFound();
   const now = new Date();
   const { sources, runs, jobs, counts } = await adminOverview(session);
+  const [notifications, switches] = await Promise.all([adminNotifications(session), listSwitches()]);
   const lastTick = jobs.find((job) => job.job === "tick");
+  const attention = sources.filter((source) => source.enabled && (source.health !== "healthy" || source.circuitOpenUntil));
+  const failedRuns = runs.filter((run) => run.status === "failed" || run.status === "partial");
 
   return (
     <div className="mx-auto max-w-[var(--container)] space-y-10">
@@ -58,6 +63,69 @@ export default async function AdminPage() {
           "The scheduler has never ticked. Check the GitHub tick workflow and its secrets."
         )}
       </p>
+
+      <section aria-labelledby="switches-heading" className="space-y-3">
+        <SectionHead id="switches-heading" kicker="No deploy needed" title="Switches" />
+        <ul className="divide-y divide-border border-y border-border">
+          {switches.map((entry) => (
+            <li key={entry.key} className="flex flex-wrap items-center justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <p className="font-semibold">
+                  {entry.label} <Badge tone={entry.enabled ? "outline" : "danger"}>{entry.enabled ? "on" : "off"}</Badge>
+                </p>
+                <p className="text-xs text-text-tertiary">
+                  {entry.detail}
+                  {entry.changedAt ? ` Changed ${relativeTime(entry.changedAt, now)}${entry.reason ? `: ${entry.reason}` : ""}.` : ""}
+                </p>
+              </div>
+              <OpsSwitch switchKey={entry.key} label={entry.label} enabled={entry.enabled} />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="attention-heading" className="space-y-3">
+        <SectionHead id="attention-heading" kicker="Dead letters and stale feeds" title="Needs attention" />
+        {attention.length === 0 && failedRuns.length === 0 ? (
+          <p className="text-sm text-text-secondary">Every switched-on source is healthy, and none of the last 40 runs failed.</p>
+        ) : (
+          <ul className="divide-y divide-border border-y border-border">
+            {attention.map((source) => (
+              <li key={source.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+                <div>
+                  <p className="font-semibold">
+                    {source.name} <Badge tone={HEALTH_TONE[source.health] ?? "neutral"}>{source.health}</Badge>
+                  </p>
+                  <p className="text-xs text-text-tertiary">
+                    {source.health === "stale" ? `Answering, but nothing new since ${source.newestItemAt ? relativeTime(source.newestItemAt, now) : "ever"}.` : source.lastError ?? "Failing."}
+                    {source.circuitOpenUntil ? ` Paused by the circuit breaker until ${formatInstant(source.circuitOpenUntil)}.` : ""}
+                  </p>
+                </div>
+                <DryRunButton sourceId={source.id} name={source.name} />
+              </li>
+            ))}
+            {failedRuns.map((run) => (
+              <li key={run.id} className="py-3 text-sm">
+                <span className="font-semibold">{run.source}</span> · {run.status} {relativeTime(run.startedAt, now)}
+                {run.quarantined ? ` · ${run.quarantined} items set aside` : ""}
+                {run.error ? <span className="text-danger"> · {run.error}</span> : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-labelledby="notifications-heading" className="space-y-3">
+        <SectionHead id="notifications-heading" kicker="The last day, in counts" title="Notifications" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-text-secondary">
+            {notifications.optedIn} {notifications.optedIn === 1 ? "reader has" : "readers have"} switched something on; {notifications.devices} {notifications.devices === 1 ? "device" : "devices"} can receive push.{" "}
+            {notifications.byStatus.length ? notifications.byStatus.map((row) => `${row.count} ${row.status}`).join(", ") : "Nothing considered in the last day"}.
+            {notifications.lastRun ? ` Last pass ${relativeTime(notifications.lastRun.startedAt, now)} (${notifications.lastRun.status.toLowerCase()}).` : " The notification pass has not run yet."}
+          </p>
+          <TestSend />
+        </div>
+      </section>
 
       <section aria-labelledby="sources-heading" className="space-y-3">
         <SectionHead id="sources-heading" kicker={`${sources.filter((source) => source.enabled).length} switched on`} title="Sources" />

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChipNav } from "@/components/news/chip-nav";
 import { DemoBanner, EmptyEdition, FrontLayout } from "@/components/news/edition";
 import { PageHeader } from "@/components/ui/page-header";
+import { NewStories } from "@/components/news/new-stories";
 import { INDIAN_STATES } from "@/config/regions";
 import { requireSession } from "@/lib/auth/session";
 import { sampleEdition } from "@/lib/demo/provider";
@@ -34,6 +35,7 @@ export default async function IndiaPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="mx-auto max-w-[var(--container)] space-y-6">
+      <NewStories renderedAt={now.toISOString()} scope={"india"} />
       <PageHeader kicker="National edition" title={stateName ? `India · ${stateName}` : "India"} description="Stories that happened in India, wherever they were published: national news, the states, and government statements labelled as official." />
       <ChipNav
         label="Filter by state"

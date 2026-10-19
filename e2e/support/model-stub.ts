@@ -1,4 +1,8 @@
+import { readFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
+import { createServer as createTlsServer } from "node:https";
+
+import { PUSH_STUB_PORT, PUSH_TLS } from "./push-tls";
 
 /**
  * A stand-in for the hosted model, speaking the same chat-completions format.
@@ -82,9 +86,28 @@ export async function startModelStub(): Promise<() => Promise<void>> {
       response.end(JSON.stringify({ choices: [{ message: { role: "assistant", content: reply(parsed.messages) } }], usage: { prompt_tokens: 50, completion_tokens: 20 } }));
     });
   });
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(MODEL_STUB_PORT, "127.0.0.1", resolve);
+  /*
+   * A stand-in push service, over HTTPS as every real one is. A test device's
+   * endpoint points here, so the product's real web-push call -- encrypted and
+   * VAPID-signed -- has somewhere to land. 201 is a push service accepting it;
+   * a path ending "/gone" answers 410, as for a subscription that no longer
+   * exists; anything unsigned or unencrypted is refused, so a send that skipped
+   * either would fail the test rather than pass it.
+   */
+  const push = createTlsServer({ cert: readFileSync(PUSH_TLS.cert), key: readFileSync(PUSH_TLS.key) }, (request, response) => {
+    request.resume();
+    request.on("end", () => {
+      const signed = request.headers.authorization?.startsWith("vapid ") && request.headers["content-encoding"] === "aes128gcm";
+      response.writeHead(!request.url?.startsWith("/push/") || !signed ? 400 : request.url.endsWith("/gone") ? 410 : 201).end();
+    });
   });
-  return () => new Promise<void>((resolve) => server.close(() => resolve()));
+  for (const [listener, port] of [[server, MODEL_STUB_PORT], [push, PUSH_STUB_PORT]] as const) {
+    await new Promise<void>((resolve, reject) => {
+      listener.once("error", reject);
+      listener.listen(port, "127.0.0.1", resolve);
+    });
+  }
+  return async () => {
+    await Promise.all([server, push].map((listener) => new Promise<void>((resolve) => listener.close(() => resolve()))));
+  };
 }

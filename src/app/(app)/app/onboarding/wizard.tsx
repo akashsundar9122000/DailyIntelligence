@@ -443,7 +443,7 @@ export function OnboardingWizard({ initial }: { initial: WizardInitial }) {
             </label>
           </div>
           <p className="border-l-[3px] border-border-strong pl-3 text-sm text-text-secondary">
-            Alert delivery is being built. Your choices are saved now and used when it arrives; until then nothing is sent.
+            Nothing reaches a screen until you also switch notifications on for that device, in Settings under Notifications. Heat alone never sends an alert: a story must be confirmed and about something you follow.
           </p>
           <div className="flex justify-between border-t border-border pt-5">
             {back}

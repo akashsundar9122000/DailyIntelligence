@@ -8,7 +8,11 @@ import { execRows, withSystem, withUser } from "@/lib/db/scope";
 import { isoInstant } from "@/lib/db/sql";
 import { ADMIN_DISABLED } from "@/lib/ingestion/registry";
 import { adminEmails } from "@/lib/env";
-import { notFound } from "@/lib/errors";
+import { AppError, notFound } from "@/lib/errors";
+import { dryRunSource, type DryRun } from "@/lib/ingestion/pipeline";
+
+import { sendTest } from "./notifications";
+import { setSwitch, type SwitchKey } from "./ops";
 
 /**
  * WHO IS AN ADMINISTRATOR. An account whose email address is in ADMIN_EMAILS
@@ -132,4 +136,56 @@ export async function setSourceEnabled(session: CurrentSession | null, input: { 
       insert into audit_events (id, actor_user_id, action, target_kind, target_id, detail, source_id)
       values (${uuidv7()}::uuid, ${admin.user.id}::uuid, ${input.enabled ? "source.enable" : "source.disable"}, 'source', ${updated[0]!.key}, ${input.reason.trim().slice(0, 500)}, ${input.sourceId}::uuid)`);
   });
+}
+
+/* ---------------------------------------------------------- phase 3 ops */
+
+export type AdminNotifications = {
+  byStatus: { status: string; count: number }[];
+  optedIn: number;
+  devices: number;
+  lastRun: { status: string; startedAt: string; detail: Record<string, unknown> } | null;
+};
+
+/** Notifications over the last day, in counts: nothing about who got what. */
+export async function adminNotifications(session: CurrentSession | null): Promise<AdminNotifications> {
+  await requireAdmin(session);
+  return withSystem("admin.notifications", async (tx) => {
+    const byStatus = await execRows<{ status: string; count: number }>(
+      tx,
+      sql`select status, count(*)::int as count from notification_events where created_at > now() - interval '24 hours' group by status order by status`,
+    );
+    const totals = (
+      await execRows<{ optedIn: number; devices: number }>(
+        tx,
+        sql`select (select count(*)::int from reader_profiles where notify_breaking or notify_hot or notify_topics or notify_story_updates
+                     or morning_briefing or evening_briefing or email_digest) as "optedIn",
+                   (select count(*)::int from push_subscriptions where revoked_at is null) as devices`,
+      )
+    )[0]!;
+    const lastRun = (
+      await execRows<{ status: string; startedAt: string; detail: Record<string, unknown> }>(
+        tx,
+        sql`select status, ${isoInstant(sql`started_at`)} as "startedAt", detail from job_runs where job = 'notify' order by started_at desc limit 1`,
+      )
+    )[0] ?? null;
+    return { byStatus, ...totals, lastRun };
+  });
+}
+
+export async function setOpsSwitch(session: CurrentSession | null, input: { key: SwitchKey; enabled: boolean; reason: string }): Promise<void> {
+  const admin = await requireAdmin(session);
+  if (!input.enabled && input.reason.trim().length < 3) throw new AppError("VALIDATION", "Say why it is being switched off.", { reason: "Say why it is being switched off." });
+  await setSwitch(input.key, input.enabled, input.reason, admin.user.id);
+}
+
+export async function dryRun(session: CurrentSession | null, sourceId: string): Promise<DryRun> {
+  await requireAdmin(session);
+  return dryRunSource(sourceId);
+}
+
+/** A test notification to the administrator's own devices: the real path, end to end. */
+export async function testSendToSelf(session: CurrentSession | null) {
+  const admin = await requireAdmin(session);
+  return sendTest(admin.user.id);
 }

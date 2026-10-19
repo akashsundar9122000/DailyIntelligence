@@ -9,8 +9,8 @@ The plan is `docs/plan.md`; the scope is `docs/BLUEPRINT.md`.
 |---|---|---|
 | 0 | Repository, newspaper identity, shell, sign-in, database security, the gate, first deploy | Done, deployed |
 | 1 | Sources, ingestion, clustering, scores, the editions, story page, search, saved, onboarding, settings, admin | Done, deployed, verified in production |
-| 2 | AI explainers with citations, AI category tagging, briefings, ask about a story, eval set | Done (see below for the deploy check) |
-| 3 | Live updates, web push, notification policy, digests | Not started |
+| 2 | AI explainers with citations, AI category tagging, briefings, ask about a story, eval set | Done, deployed, verified in production |
+| 3 | Live updates, web push, notification policy, digests, resilience | Done (see below for the deploy check) |
 | 4 | Social Pulse, dashboards, admin cluster tools and moderation, semantic search | Not started |
 | 5 | Visual explainers, AI cost caps, editorial review, retention purge, hardening, final docs | Not started |
 
@@ -126,6 +126,12 @@ Verified locally:
   1440px and 390px. Two fixes came from looking: repeated sentences are dropped,
   and a model line that only restates its headline is not printed twice.
 
+Verified in production (commit `4a49666`): the smoke suite passed 24 of 24; the
+tick workflow's AI pass wrote 7 explainers and the morning briefing with
+Nemotron, none failed. One explainer was rejected only because the model
+suggested a section not on the list; that now drops the section instead
+(`1c95e10`).
+
 Known limitations:
 
 - From headlines alone the explainers are short. That is the honest limit of
@@ -134,3 +140,49 @@ Known limitations:
   two Trump-Netanyahu headlines), so the briefing can list both.
 - The name check covers capitalised words only; a lower-case detail a model
   adds is caught only if it carries a number.
+
+## Phase 3
+
+Built:
+
+- **Notification policy** (`src/lib/notifications/policy.ts`, pure): the
+  editors' pause, the reader's pause and choices, quality thresholds per kind
+  (heat alone never alerts: confidence and a follow are required), quiet
+  hours in the reader's time zone, a daily cap, a twelve-hour cooldown per
+  story.
+- **The notification pass** (`/api/cron/notify`, the tick workflow's third
+  step): at most one alert per reader per run; every decision recorded once
+  per reader by a dedupe key, with the reason when the reader's own rules held
+  it back; scheduled morning and evening briefings; the email digest through
+  the outbox.
+- **Web push**: VAPID keys (production values in Vercel only), a service worker
+  that only shows and opens notifications, the permission prompt only after a
+  button press, devices listed and removable, a device the push service calls
+  gone is revoked. "Sent" means handed over; nothing claims "delivered".
+- **Settings, Notifications tab**: this device, the alert rules, pause,
+  devices, and recent notifications with what was held back and why.
+- **Live updates**: `/api/feed/pulse` polled once a minute while a page is
+  visible; a "N new stories" button that loads them only when pressed.
+- **Resilience**: switches in the press room for ingestion, each provider, the
+  AI pass and notifications (audited, with a reason); sources marked stale when
+  they answer with nothing new for longer than their kind allows; a dry-run
+  read that stores nothing; one request a second per host; a "needs attention"
+  list of stale and failing sources and failed runs.
+
+Verified locally:
+
+- `pnpm verify` passed: 202 unit, 36 component, 133 integration and 280
+  end-to-end tests.
+- End to end, through the real web-push library: an alert for a followed,
+  confirmed story reached a stand-in HTTPS push service (which refuses anything
+  unsigned or unencrypted), was recorded once, and was marked opened when its
+  link was followed; a device answering 410 was revoked.
+- Screenshots of the Notifications tab read in both themes at 1440px and 390px.
+
+Known limitations:
+
+- Push cannot be exercised against a real browser push service in the suite;
+  the stand-in checks that each send is signed and encrypted, not that a phone
+  showed it.
+- iPhones receive web push only from a site added to the home screen; the page
+  says so.

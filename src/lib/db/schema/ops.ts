@@ -1,9 +1,9 @@
 /**
- * Operational tables: the platform's own bookkeeping. All three are
+ * Operational tables: the platform's own bookkeeping. All but ops_switches are
  * system-only (see ../classification.ts) -- no user reads or writes them
  * directly.
  */
-import { check, index, integer, jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, check, index, integer, jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 
 import { inVocab, namedTimestamp, optionalTimestamp, primaryId } from "./_shared";
 
@@ -81,3 +81,23 @@ export const jobRuns = pgTable(
     index("job_runs_by_job").on(t.job, t.startedAt.desc()),
   ],
 );
+
+/**
+ * Switches an administrator flips without a deploy: pause all notifications,
+ * stop all ingestion, stop one provider, stop the AI pass. A missing row is
+ * ON -- the switch exists to stop something, and a table that forgot a row
+ * must not silently stop the paper.
+ *
+ *   notifications      every alert and digest
+ *   ingestion          every source
+ *   provider:<name>    one adapter (provider:gdelt_gkg, provider:rss)
+ *   ai                 the AI pass
+ */
+export const opsSwitches = pgTable("ops_switches", {
+  key: text("key").primaryKey(),
+  enabled: boolean("enabled").notNull(),
+  /** Why it was switched, in words; shown in the press room. */
+  reason: text("reason"),
+  changedBy: text("changed_by"),
+  changedAt: namedTimestamp("changed_at"),
+});
