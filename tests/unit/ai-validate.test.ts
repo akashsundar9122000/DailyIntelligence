@@ -33,6 +33,22 @@ describe("checking a model's sentences against the records", () => {
     expect(checkClaims([{ text: "Rain has fallen for 72 hours.", cites: ["S1"] }], RECORDS).problems).toEqual([{ kind: "unsupported-number", text: "72" }]);
   });
 
+  it("never lets a record's publication time stand in for a number it does not give", () => {
+    // Records carry their publication time. Its minutes are not a fact about the story.
+    const timed: SourceRecord[] = [{ ref: "S1", text: "publisher: alpha.example | published: 19 Oct 2026, 11:40 am IST | headline: Floods cut off 14 villages" }];
+    expect(checkClaims([{ text: "The minister visited with 40 officials.", cites: ["S1"] }], timed).problems).toEqual([{ kind: "unsupported-number", text: "40" }]);
+    // The time itself, stated as a time, is supported; a different time is not.
+    expect(checkClaims([{ text: "The report was published at 11:40 am.", cites: ["S1"] }], timed).ok).toBe(true);
+    expect(checkClaims([{ text: "The report was published at 11:45 am.", cites: ["S1"] }], timed).problems).toEqual([{ kind: "unsupported-number", text: "11:45" }]);
+    // And the date in the same line still supports a date.
+    expect(checkClaims([{ text: "Floods cut off 14 villages on 19 October 2026.", cites: ["S1"] }], timed).ok).toBe(true);
+  });
+
+  it("reads a decimal as a number, not as a clock", () => {
+    expect(checkClaims([{ text: "Rescue teams reached 1,200 residents.", cites: ["S2"] }], RECORDS).ok).toBe(true);
+    expect(checkClaims([{ text: "Relief of ₹2.50 crore was sent.", cites: ["S2"] }], RECORDS).problems).toEqual([{ kind: "unsupported-number", text: "₹2.50" }]);
+  });
+
   it("lets small counting words through, but never a percentage or a sum of money", () => {
     expect(checkClaims([{ text: "Two publishers report 3 rescue teams.", cites: ["S1"] }], RECORDS).ok).toBe(true);
     expect(checkClaims([{ text: "Rainfall rose 5% on the day.", cites: ["S1"] }], RECORDS).problems).toEqual([{ kind: "unsupported-number", text: "5%" }]);

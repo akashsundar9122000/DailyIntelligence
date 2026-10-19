@@ -10,6 +10,9 @@
  *   - every claim cites at least one record, and only records it was given;
  *   - every number in a claim is in a record that claim cites (by value: "1,200"
  *     matches "1200"; NOT by closeness: "1,200" does not match "1,180");
+ *   - a clock time is one value, in the claim and in the records alike: a
+ *     record published at "11:40 am" supports a claim that says 11:40, and
+ *     never a claim about "40 officials";
  *   - every name in a claim -- a capitalised word that does not start the
  *     sentence -- is in some record of the bundle;
  *   - an official statement is attributed to whoever made it, never stated as
@@ -54,6 +57,31 @@ export function canonical(token: string): string {
   const whole = integer.replace(/^0+(?=\d)/, "") || "0";
   const part = fraction.replace(/0+$/, "");
   return part ? `${whole}.${part}` : whole;
+}
+
+/*
+ * A time of day, "11:40" or "9:05 pm". Colon only: a full stop between digits
+ * is a decimal ("2.50 lakh"), and reading it as a clock would hide a number.
+ */
+const CLOCK = /(?<![\d:])\d{1,2}:\d{2}(?::\d{2})?(?![\d:])/g;
+
+/** The clock times in a text, as "H:MM": "09:05" and "9:05:00" are both "9:05". */
+export function clocksIn(text: string): string[] {
+  return (text.match(CLOCK) ?? []).map((clock) => {
+    const [hour = "", minute = ""] = clock.split(":");
+    return `${Number(hour)}:${minute}`;
+  });
+}
+
+/**
+ * Every record now carries its publication time ("published: 19 Oct 2026,
+ * 11:40 am IST"). Read digit by digit, that time supported any claim that
+ * happened to use its minutes -- an invented "40 officials" passed whenever a
+ * record was published at :40. Clocks are taken out before numbers are read,
+ * and checked as clocks.
+ */
+function withoutClocks(text: string): string {
+  return text.replace(CLOCK, " ");
 }
 
 export function numbersIn(text: string): string[] {
@@ -117,8 +145,10 @@ export function checkClaims(claims: readonly Claim[], records: readonly SourceRe
     const cited = cites.map((ref) => byRef.get(ref)).filter((record): record is SourceRecord => Boolean(record));
     for (const ref of cites) if (!byRef.has(ref)) problems.push({ kind: "unknown-citation", text: ref });
 
-    const known = new Set(cited.flatMap((record) => numbersIn(record.text).map(canonical)));
-    for (const token of numbersIn(text)) {
+    const known = new Set(cited.flatMap((record) => numbersIn(withoutClocks(record.text)).map(canonical)));
+    const knownClocks = new Set(cited.flatMap((record) => clocksIn(record.text)));
+    for (const clock of clocksIn(text)) if (!knownClocks.has(clock)) problems.push({ kind: "unsupported-number", text: clock });
+    for (const token of numbersIn(withoutClocks(text))) {
       const value = canonical(token);
       if (!/[₹$€£%.]/.test(token) && SMALL_WHOLE.test(value)) continue;
       if (!known.has(value)) problems.push({ kind: "unsupported-number", text: token });

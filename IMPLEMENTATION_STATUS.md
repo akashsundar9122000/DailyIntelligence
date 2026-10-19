@@ -405,3 +405,12 @@ Still open:
 
 - The AI claim-check gap recorded under 6a is unchanged. Its test passed in
   this run only because the seeded time did not end in :40.
+
+## Claim check: clock times are one value (2026-10-19)
+
+- `checkClaims` read a record's publication time ("11:40 am") digit by digit,
+  so an invented "40 officials" was accepted whenever the cited record was
+  published at :40 -- and `tests/integration/ai.test.ts` passed or failed by
+  the clock. A clock time is now one value in claims and records alike: it
+  supports a claim stating that time and nothing else; the date beside it
+  still supports dates. Pinned by unit tests with a fixed 11:40 record.
