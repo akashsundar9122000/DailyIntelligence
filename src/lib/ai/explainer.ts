@@ -91,13 +91,17 @@ export function claimsOf(explainer: Pick<Explainer, ExplainerSection>): Claim[] 
   return EXPLAINER_SECTIONS.flatMap((section) => explainer[section]);
 }
 
-/** Every rule an explainer must pass, beyond the shape. */
+/** Every rule an explainer's sentences must pass, beyond the shape. */
 export function checkExplainer(explainer: Explainer, bundle: StoryBundle): Check {
-  const base = checkClaims(claimsOf(explainer), bundle.records);
-  const unknown = explainer.categories.filter((slug) => !(CATEGORY_SLUGS as readonly string[]).includes(slug));
-  if (unknown.length) base.problems.push({ kind: "unknown-citation", text: `sections not on the list: ${unknown.join(", ")}` });
-  return { ok: base.problems.length === 0, problems: base.problems };
+  return checkClaims(claimsOf(explainer), bundle.records);
 }
+
+/*
+ * A section not on the paper's list is dropped, not a reason to reject: seen
+ * in production on 19 October 2026, "us-politics" threw away an explainer
+ * whose every sentence had passed. Dropping a label can only remove, never add.
+ */
+const knownSections = (slugs: string[]) => slugs.filter((slug) => (CATEGORY_SLUGS as readonly string[]).includes(slug));
 
 const IST = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
 
@@ -153,5 +157,5 @@ export function explainerMessages(bundle: StoryBundle) {
 
 export async function writeExplainer(model: ChatModel, bundle: StoryBundle): Promise<JsonOutcome<Explainer>> {
   const outcome = await chatJson(model, explainerMessages(bundle), explainerSchema as unknown as z.ZodType<Explainer>, (value) => checkExplainer(value, bundle), 1400);
-  return outcome.ok ? { ...outcome, value: withoutRepeats(outcome.value) } : outcome;
+  return outcome.ok ? { ...outcome, value: { ...withoutRepeats(outcome.value), categories: knownSections(outcome.value.categories) } } : outcome;
 }

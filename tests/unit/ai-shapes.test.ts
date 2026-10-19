@@ -30,11 +30,9 @@ describe("an explainer", () => {
     expect(recordLine(record)).toBe("publisher: alpha.example | type: news report | published: 19 October 2026 at 08:00 IST | headline: Floods cut off 14 villages in the hill district");
   });
 
-  it("may choose sections only from the paper's own list", () => {
-    const ok = checkExplainer({ ...base, oneMinute: [{ text: "Floods have cut off 14 villages.", cites: ["S1"] }], categories: ["climate"] }, bundle);
-    expect(ok.ok).toBe(true);
-    const invented = checkExplainer({ ...base, oneMinute: [{ text: "Floods have cut off 14 villages.", cites: ["S1"] }], categories: ["weather-gossip"] }, bundle);
-    expect(invented.ok).toBe(false);
+  it("checks the sentences, whatever sections it suggests", () => {
+    expect(checkExplainer({ ...base, oneMinute: [{ text: "Floods have cut off 14 villages.", cites: ["S1"] }], categories: ["climate"] }, bundle).ok).toBe(true);
+    expect(checkExplainer({ ...base, oneMinute: [{ text: "Floods have cut off 40 villages.", cites: ["S1"] }], categories: ["climate"] }, bundle).ok).toBe(false);
   });
 });
 

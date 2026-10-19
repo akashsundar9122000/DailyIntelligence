@@ -180,6 +180,13 @@ describe("story explainers", () => {
     });
   });
 
+  it("keeps a sound explainer whose suggested section is not on the paper's list, and drops the section", async () => {
+    const { storyId } = await seedStory({ categories: [] });
+    const { detail } = await runEnrichment({ trigger: "test", model: scriptedModel([explainer(JSON.parse(GOOD).oneMinute, ["us-politics"])]) });
+    expect(detail).toMatchObject({ explained: 1, rejected: 0 });
+    expect((await ownerQuery<{ categories: string[]; categories_by: string }>("select categories, categories_by from stories where id = $1", [storyId]))[0]).toEqual({ categories: [], categories_by: "rules" });
+  });
+
   it("is withdrawn from the page when a source it cited is withdrawn", async () => {
     const { storyId, officialItem } = await seedStory();
     await runEnrichment({ trigger: "test", model: scriptedModel([GOOD]) });
