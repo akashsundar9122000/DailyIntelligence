@@ -64,7 +64,7 @@ function fakeInternet(overrides: Record<string, () => Response> = {}) {
   const calls: string[] = [];
   const routes: Record<string, () => Response> = {
     "https://fixtures.invalid/gdeltv2/lastupdate.txt": () => new Response(`1 h http://fixtures.invalid/gdeltv2/${stamp}.export.CSV.zip\n2 h http://fixtures.invalid/gdeltv2/${stamp}.gkg.csv.zip\n`),
-    [`https://fixtures.invalid/gdeltv2/${stamp}.gkg.csv.zip`]: () => new Response(zipSync({ [`${stamp}.gkg.csv`]: strToU8(GKG_LINES.join("\n")) })),
+    [`https://fixtures.invalid/gdeltv2/${stamp}.gkg.csv.zip`]: () => new Response(zipSync({ [`${stamp}.gkg.csv`]: strToU8(GKG_LINES.join("\n")) }), { headers: { "content-type": "application/zip" } }),
     "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3&reg=3": () =>
       new Response(RSS("Ministry announces relief for flood-hit hill district villages", "https://pib.gov.in/PressReleaseIframePage.aspx?PRID=1"), { headers: { etag: '"pib-1"' } }),
     ...overrides,
@@ -188,6 +188,46 @@ describe("a tick", () => {
     await runTick({ trigger: "test", budgetMs: 20_000, fetchFn: fakeInternet().fetchFn });
     const jobs = await ownerQuery<{ job: string; status: string }>("select job, status from job_runs");
     expect(jobs).toEqual([{ job: "tick", status: "OK" }]);
+  });
+});
+
+describe("the first GDELT run", () => {
+  const later = dateToStamp(new Date(Math.floor(Date.now() / 900_000) * 900_000 + 900_000));
+  const index = (named: string) => () => new Response(`1 h http://fixtures.invalid/gdeltv2/${named}.export.CSV.zip\n2 h http://fixtures.invalid/gdeltv2/${named}.gkg.csv.zip\n`);
+  const gdeltRun = async () =>
+    (await ownerQuery<{ status: string; inserted: number; error: string | null }>(
+      "select r.status, r.inserted, r.error from ingestion_runs r join sources s on s.id = r.source_id where s.key = 'gdelt-gkg'",
+    ))[0]!;
+
+  // Seen in production on 19 October 2026: the index named a file whose window had not closed, and the run stored nothing while reporting success.
+  it("reads the newest file that exists when the index names one still to come", async () => {
+    await runTick({ trigger: "test", budgetMs: 20_000, fetchFn: fakeInternet({ "https://fixtures.invalid/gdeltv2/lastupdate.txt": index(later) }).fetchFn });
+    expect(await gdeltRun()).toMatchObject({ status: "ok", inserted: 5 });
+    const cursor = (await ownerQuery<{ last: string }>("select cursor->>'lastFile' as last from sources where key = 'gdelt-gkg'"))[0]!;
+    expect(cursor.last).toBe(stamp);
+  });
+
+  it("does not take a page that answers 200 for the file", async () => {
+    const page = () => new Response("<html>Not here yet</html>", { headers: { "content-type": "text/html" } });
+    const current = dateToStamp(new Date(Math.floor(Date.now() / 900_000) * 900_000));
+    await runTick({
+      trigger: "test",
+      budgetMs: 20_000,
+      fetchFn: fakeInternet({ "https://fixtures.invalid/gdeltv2/lastupdate.txt": index(current), [`https://fixtures.invalid/gdeltv2/${current}.gkg.csv.zip`]: page }).fetchFn,
+    });
+    expect(await gdeltRun()).toMatchObject({ status: "ok", inserted: 5 });
+  });
+
+  it("fails, saying what it tried, when no file exists -- never 'not modified'", async () => {
+    await runTick({
+      trigger: "test",
+      budgetMs: 20_000,
+      fetchFn: fakeInternet({ [`https://fixtures.invalid/gdeltv2/${stamp}.gkg.csv.zip`]: () => new Response("", { status: 404 }) }).fetchFn,
+    });
+    const run = await gdeltRun();
+    expect(run.status).toBe("failed");
+    expect(run.inserted).toBe(0);
+    expect(run.error).toMatch(/^No knowledge-graph file in the last four hours \(UTC \d{4} 404, /);
   });
 });
 

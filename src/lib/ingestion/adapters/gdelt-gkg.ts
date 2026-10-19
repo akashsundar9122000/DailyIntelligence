@@ -53,6 +53,27 @@ export function nextStamp(stamp: string, steps = 1): string {
   return dateToStamp(new Date(stampToDate(stamp).getTime() + steps * FILE_MINUTES * 60_000));
 }
 
+/**
+ * The newest stamp that can exist at `now`: the quarter-hour at or before it.
+ * The index names the NEXT file before its window has closed (seen 19 October
+ * 2026: at 02:42 UTC it named 02:45), and a start in the future is a run that
+ * reads nothing.
+ */
+export function latestPossibleStamp(now: number): string {
+  const quarter = FILE_MINUTES * 60_000;
+  return dateToStamp(new Date(Math.floor(now / quarter) * quarter));
+}
+
+/**
+ * Whether an answer is the file, not a page about the file. Only a partial
+ * answer to the one-byte range, or a whole answer that says it is an archive,
+ * counts: a CDN that answers 200 with an HTML error page must not pass for one.
+ */
+function isArchive(response: Response): boolean {
+  if (response.status === 206) return true;
+  return response.status === 200 && /zip|octet-stream/i.test(response.headers.get("content-type") ?? "");
+}
+
 /** The GKG file's stamp from lastupdate.txt: three lines of "size hash url"; the gkg line names the file. */
 export function latestGkgStamp(index: string): string | null {
   const line = index.split("\n").find((entry) => /\.gkg\.csv\.zip\s*$/.test(entry));
@@ -182,14 +203,26 @@ export const gdeltGkgAdapter: SourceAdapter = {
       // First run: find the newest file that exists, by walking back from what the index names.
       const index = await getFrom(fetchFn, env().GDELT_LASTUPDATE_URL, { deadline, timeoutMs: 10_000 });
       if (!index.ok) throw new SourceError(`The file index answered ${index.status}.`, index.status);
-      const latest = latestGkgStamp(await index.text());
-      if (!latest) throw new SourceError("The file index named no knowledge-graph file.");
-      next = latest;
+      const named = latestGkgStamp(await index.text());
+      if (!named) throw new SourceError("The file index named no knowledge-graph file.");
+      // Stamps are fixed-width digits, so they compare as strings.
+      const ceiling = latestPossibleStamp(Date.now());
+      next = named < ceiling ? named : ceiling;
+      // Each stamp tried and what it answered, so a first run that finds nothing says exactly why.
+      const tried: string[] = [];
+      let found = false;
       for (let step = 0; step < FIRST_RUN_LOOKBACK_FILES; step++) {
         const probe = await getFrom(fetchFn, fileUrl(next), { deadline, timeoutMs: 10_000, headers: { range: "bytes=0-0" } });
-        if (probe.ok || probe.status === 206) break;
+        await probe.body?.cancel();
+        tried.push(`${next.slice(8, 12)} ${probe.status}`);
+        if (isArchive(probe)) {
+          found = true;
+          break;
+        }
         next = nextStamp(next, -1);
       }
+      // Never "not modified" on a first run: nothing has been read, so nothing can be unchanged.
+      if (!found) throw new SourceError(`No knowledge-graph file in the last four hours (UTC ${tried.join(", ")}).`, 404);
     }
 
     const items: GkgRow[] = [];
@@ -203,6 +236,12 @@ export const gdeltGkgAdapter: SourceAdapter = {
       lastStatus = response.status;
       if (response.status === 404) break; // not published yet: try again next run
       if (!response.ok) throw new SourceError(`The file for ${next} answered ${response.status}.`, response.status);
+      // A page standing in for a file that is not there yet is also "not published yet". Taking it as a damaged
+      // archive would move the cursor past the file, and the real one would never be read.
+      if (!isArchive(response)) {
+        await response.body?.cancel();
+        break;
+      }
       const zipped = new Uint8Array(await response.arrayBuffer());
       let text: string;
       try {
@@ -233,6 +272,7 @@ export const gdeltGkgAdapter: SourceAdapter = {
       if (items.length >= cap || deadline - Date.now() < 8_000) break;
     }
 
+    if (readUpTo === null) throw new SourceError(`The newest file, ${next}, answered ${lastStatus} when read.`, lastStatus);
     if (readUpTo === last) return { status: "not_modified", httpStatus: lastStatus };
     const newestAt = items.reduce<string | null>((newest, item) => (item.publishedAt && (!newest || item.publishedAt > newest) ? item.publishedAt : newest), null);
     return {
