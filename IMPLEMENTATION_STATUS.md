@@ -13,6 +13,7 @@ The plan is `docs/plan.md`; the scope is `docs/BLUEPRINT.md`.
 | 3 | Live updates, web push, notification policy, digests, resilience | Done, deployed, verified in production |
 | 4 | Social Pulse, dashboards, admin cluster tools and moderation, semantic search | Done, deployed, verified in production |
 | 5 | Visual explainers, AI cost caps, editorial review, retention purge, hardening, final docs | Done, deployed, verified in production |
+| 6 | Themes (Aurora default, Newspaper, Terminal, Blueprint, Studio), motion settings, the landing page in motion, page transitions | Done, deployed, verified in production |
 
 ## Phase 0
 
@@ -456,3 +457,15 @@ Not done:
 - The "front page, live" list does not cycle its headlines; it shows the six
   real ones, which already fills the column.
 - The interest picker further down keeps its square chips.
+
+## Phase 6 in production (2026-10-19)
+
+- First push (`3b22120`): CI was cancelled at its 25-minute limit. Two causes,
+  both fixed in `b4ad298`: theme tests clicked the picker before hydration (the
+  click checked a native radio and saved nothing), and the section heatmap
+  ordered ties by Postgres's grouping order, so a section could drop out.
+- `b4ad298`: CI green (about 19 minutes -- close to the 25-minute job limit;
+  the theme accessibility matrix is the largest addition). Deployed from a
+  clean clone with `vercel deploy --prod`. `/api/health` reports `di_app`,
+  row security enforced and commit `b4ad298`; the production smoke suite
+  passed 28 of 28. The live landing page wears Aurora by day and by night.
