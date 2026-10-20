@@ -41,6 +41,8 @@ for (const route of ROUTES) {
       }
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       await page.evaluate(() => document.fonts.ready);
+      // Settled: after a client navigation the <title> can land a moment after the page.
+      await expect(page).not.toHaveTitle("");
       const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
       const blocking = results.violations
         .filter((violation) => violation.impact === "serious" || violation.impact === "critical")

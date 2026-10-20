@@ -1,4 +1,5 @@
 import { expect, test } from "../support/session";
+import { untilHydrated } from "../support/test";
 
 import type { Page } from "@playwright/test";
 
@@ -6,6 +7,8 @@ const saved = (page: Page) => page.waitForResponse((response) => response.reques
 
 /** Choose an option the way a person does: by clicking its label, inside the named group. */
 async function choose(page: Page, group: string, option: string) {
+  // Hydrated first: a click on a server-rendered radio checks it and saves nothing (CI, 2026-10-19).
+  await untilHydrated(page.getByRole("group", { name: group }).getByRole("radio").first());
   await page.getByRole("group", { name: group }).getByText(option, { exact: true }).click();
   await expect(page.getByRole("group", { name: group }).getByRole("radio", { name: option, exact: true })).toBeChecked();
 }

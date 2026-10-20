@@ -133,6 +133,10 @@ test.describe("the AI pages are accessible", () => {
       await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
       for (const open of [() => openStory(page, "monsoon", "climate"), () => page.goto("/app/briefings")]) {
         await open();
+        // The page has settled: after a client navigation the new <title> can
+        // arrive a moment after the heading, and axe measured the gap (CI,
+        // 2026-10-19). A page with no title at rest still fails here.
+        await expect(page).not.toHaveTitle("");
         const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
         const blocking = results.violations.filter((violation) => violation.impact === "serious" || violation.impact === "critical").map((violation) => `${violation.id}: ${violation.nodes[0]?.html ?? ""}`);
         expect(blocking).toEqual([]);
