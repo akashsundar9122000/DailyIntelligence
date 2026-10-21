@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { illustrationPrompt, verdictFrom } from "@/lib/ai/illustration";
 import { CATEGORIES } from "@/config/categories";
@@ -68,5 +68,54 @@ describe("the check every illustration passes before anyone sees it", () => {
   it("refuses an answer that is not the JSON asked for", () => {
     expect(verdictFrom("Looks fine to me!").ok).toBe(false);
     expect(verdictFrom(null).ok).toBe(false);
+  });
+});
+
+describe("the picture check when the check itself fails", () => {
+  const clean = JSON.stringify({ photorealistic: false, real_identifiable_person: false, close_up_face: false, weapons: false, confrontation: false, text_or_letters: false, logo_or_flag: false, violence_or_gore: false, describe: "A lighthouse at dusk" });
+  const refusal = JSON.stringify({ ...JSON.parse(clean), text_or_letters: true });
+  const picture = { bytes: new Uint8Array([0xff, 0xd8, 0xff]), contentType: "image/jpeg", width: 1344, height: 768, model: "test/painter" };
+  const answer = (content: string) => new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200 });
+
+  /** env() caches its first parse, so each case needs a fresh copy of the module and a stubbed fetch. */
+  async function checkWith(responses: Response[]) {
+    vi.resetModules();
+    vi.stubEnv("NVIDIA_API_KEY", "nvapi-test-placeholder");
+    const calls: number[] = [];
+    vi.stubGlobal("fetch", async () => {
+      calls.push(calls.length);
+      return responses.shift()!;
+    });
+    const { nvidiaVisionCheck } = await import("@/lib/ai/illustration");
+    return { check: nvidiaVisionCheck({ deadline: Date.now() + 60_000 }), calls };
+  }
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("asks once more after a server error, so a drawn picture is not lost to one 500", async () => {
+    const { check, calls } = await checkWith([new Response("", { status: 500 }), answer(clean)]);
+    expect(await check.inspect(picture)).toMatchObject({ ok: true });
+    expect(calls).toHaveLength(2);
+  });
+
+  it("never asks again after a refusal: a refusal is an answer", async () => {
+    const { check, calls } = await checkWith([answer(refusal), answer(clean)]);
+    expect(await check.inspect(picture)).toMatchObject({ ok: false, reasons: ["it contains text or letters"] });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("gives up after a second server error, and says so", async () => {
+    const { check, calls } = await checkWith([new Response("", { status: 503 }), new Response("", { status: 502 })]);
+    await expect(check.inspect(picture)).rejects.toThrow("The picture check answered 502.");
+    expect(calls).toHaveLength(2);
+  });
+
+  it("does not retry a client error: a 4xx will not mend itself", async () => {
+    const { check, calls } = await checkWith([new Response("", { status: 400 }), answer(clean)]);
+    await expect(check.inspect(picture)).rejects.toThrow("The picture check answered 400.");
+    expect(calls).toHaveLength(1);
   });
 });

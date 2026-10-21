@@ -159,28 +159,38 @@ export function nvidiaVisionCheck({ deadline }: { deadline: number }): VisionChe
   const fields = Object.keys(QUESTIONS).map((name) => `"${name}": boolean`).join(", ");
   return {
     async inspect(picture) {
-      const remaining = deadline - Date.now() - 1_000;
-      if (remaining < 5_000) throw new AiOutOfTime();
-      const response = await fetch(`${base.replace(/\/$/, "")}/chat/completions`, {
-        method: "POST",
-        signal: AbortSignal.timeout(Math.min(30_000, remaining)),
-        headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-        body: JSON.stringify({
-          model,
-          temperature: 0,
-          max_tokens: 300,
-          ...(model.startsWith("nvidia/nemotron") ? { chat_template_kwargs: { enable_thinking: false } } : {}),
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: `Look at this picture and answer with JSON only: {${fields}, "describe": string}. Be strict: if unsure, answer true.` },
-                { type: "image_url", image_url: { url: `data:${picture.contentType};base64,${Buffer.from(picture.bytes).toString("base64")}` } },
-              ],
-            },
-          ],
-        }),
-      });
+      const ask = () => {
+        const remaining = deadline - Date.now() - 1_000;
+        if (remaining < 5_000) throw new AiOutOfTime();
+        return fetch(`${base.replace(/\/$/, "")}/chat/completions`, {
+          method: "POST",
+          signal: AbortSignal.timeout(Math.min(30_000, remaining)),
+          headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+          body: JSON.stringify({
+            model,
+            temperature: 0,
+            max_tokens: 300,
+            ...(model.startsWith("nvidia/nemotron") ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: `Look at this picture and answer with JSON only: {${fields}, "describe": string}. Be strict: if unsure, answer true.` },
+                  { type: "image_url", image_url: { url: `data:${picture.contentType};base64,${Buffer.from(picture.bytes).toString("base64")}` } },
+                ],
+              },
+            ],
+          }),
+        });
+      };
+      /*
+       * One more try when the check itself fails (a 5xx), never when it
+       * answers: in production on 21 October 2026 two of three checks in a
+       * run answered 500, and each cost a picture already drawn. A refusal is
+       * an answer and is final; an error is not an answer.
+       */
+      let response = await ask();
+      if (response.status >= 500 && deadline - Date.now() > 8_000) response = await ask();
       if (!response.ok) throw new AiUnavailable(`The picture check answered ${response.status}.`);
       const body = (await response.json()) as { choices?: { message?: { content?: string | null } }[] };
       return verdictFrom(body.choices?.[0]?.message?.content ?? null);
