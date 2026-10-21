@@ -67,9 +67,10 @@ describe("whether a picture may be kept", () => {
 });
 
 describe("the image optimiser's allowed hosts", () => {
-  it("are exactly the media hosts of the sources cleared for media: no more, no fewer", () => {
+  it("are exactly the media hosts of the sources cleared for media, and our own store: no more, no fewer", () => {
     const cleared = SOURCE_CATALOGUE.filter((source) => source.rights.status === "cleared" && source.rights.media).flatMap((source) => source.rights.mediaHosts ?? []);
     const allowed = (nextConfig.images?.remotePatterns ?? []).map((pattern) => ("hostname" in pattern ? pattern.hostname : ""));
-    expect([...allowed].sort()).toEqual([...new Set(cleared)].sort());
+    // Plus our own Blob store, where AI illustrations are kept: ours, not a source's.
+    expect([...allowed].sort()).toEqual([...new Set(cleared), "*.public.blob.vercel-storage.com"].sort());
   });
 });

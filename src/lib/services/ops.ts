@@ -16,6 +16,7 @@ export const SWITCHES = [
   { key: "ingestion", label: "Reading sources", detail: "Every source, every tick." },
   ...PROVIDERS.map((provider) => ({ key: `provider:${provider}`, label: `Provider: ${provider}`, detail: "Every source read through this adapter." })),
   { key: "ai", label: "AI pass", detail: "Explainers and the edition briefing." },
+  { key: "ai_images", label: "AI illustrations", detail: "Pictures drawn for top stories; stories keep their cover art." },
   { key: "notifications", label: "Notifications", detail: "Every alert, briefing and digest, for every reader." },
 ] as const;
 export type SwitchKey = (typeof SWITCHES)[number]["key"];

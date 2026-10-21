@@ -25,6 +25,8 @@ export type SeedStory = {
   official?: boolean;
   /** The headline item comes from a source cleared for media, and carries a picture on its asset host. */
   photo?: boolean;
+  /** The story has a checked AI illustration in the store. */
+  illustrated?: boolean;
   minutesAgo: number;
 };
 
@@ -36,7 +38,7 @@ export const SEED_STORIES: SeedStory[] = [
   { key: "survey", headline: "Observatory releases a new open map of the southern sky", category: "science", scope: "global", countries: ["AU"], photo: true, heat: 30, confidence: 51, importance: 33, publishers: ["epsilon.example", "zeta.example"], minutesAgo: 300 },
   { key: "river", headline: "Two neighbouring countries agree on a shared river survey", category: "world-politics", scope: "global", countries: ["FR", "DE"], heat: 46, confidence: 59, importance: 55, publishers: ["eta.example", "theta.example", "iota.example"], minutesAgo: 180 },
   { key: "chip", headline: "Chip makers outline a plan for quieter data centre cooling", category: "technology", scope: "global", countries: ["US"], heat: 41, confidence: 47, importance: 36, publishers: ["kappa.example", "lambda.example"], minutesAgo: 120 },
-  { key: "model", headline: "Research lab publishes an open AI model for translation", category: "ai", scope: "global", countries: ["US"], heat: 63, confidence: 52, importance: 45, publishers: ["mu.example", "nu.example"], minutesAgo: 60 },
+  { key: "model", headline: "Research lab publishes an open AI model for translation", category: "ai", scope: "global", countries: ["US"], illustrated: true, heat: 63, confidence: 52, importance: 45, publishers: ["mu.example", "nu.example"], minutesAgo: 60 },
   { key: "market", headline: "Small business lending rises for a third straight month", category: "business", scope: "india", states: ["DL"], heat: 35, confidence: 61, importance: 48, publishers: ["xi.example", "omicron.example"], minutesAgo: 400 },
   { key: "football", headline: "Coastal club signs a young forward from the academy", category: "football", scope: "global", countries: ["ES"], heat: 50, confidence: 40, importance: 22, publishers: ["pi.example"], minutesAgo: 90 },
 ];
@@ -45,6 +47,9 @@ export const SEED_SOURCE_KEYS = { news: "e2e-news-index", official: "e2e-officia
 
 /** The seed picture: on an allowed asset host (next.config remotePatterns), so it is served through /_next/image. */
 export const SEED_PHOTO_URL = "https://assets.science.nasa.gov/dynamicimage/e2e/southern-sky.jpg";
+
+/** The seed illustration: in "our" Blob store's host pattern, so it too is served through /_next/image. */
+export const SEED_ILLUSTRATION_URL = "https://e2e-store.public.blob.vercel-storage.com/illustrations/model.jpg";
 
 /** Write the seed edition. Idempotent within a run: the caller truncates first. */
 export async function seedEdition(ownerUrl: string): Promise<void> {
@@ -123,6 +128,13 @@ export async function seedEdition(ownerUrl: string): Promise<void> {
         ],
       );
       const storyId = created.rows[0]!.id;
+      if (story.illustrated) {
+        await client.query(
+          `insert into story_images (id, story_id, kind, status, url, width, height, alt, model, prompt_version, prompt)
+           values (gen_random_uuid(), $1, 'ai', 'ready', $2, 1344, 768, 'AI illustration for a AI story', 'e2e/seed', 'e2e-seed', 'seeded')`,
+          [storyId, SEED_ILLUSTRATION_URL],
+        );
+      }
       for (const itemId of itemIds) {
         await client.query(`insert into story_items (id, story_id, item_id, association_confidence, method) values (gen_random_uuid(), $1, $2, 90, 'title')`, [storyId, itemId]);
       }

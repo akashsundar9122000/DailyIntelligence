@@ -85,6 +85,20 @@
       "when": 1792387045922,
       "tag": "0011_briefing_review_status",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792542893742,
+      "tag": "0012_story_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792542905408,
+      "tag": "0013_story_images_access_rules",
+      "breakpoints": true
     }
   ]
 }

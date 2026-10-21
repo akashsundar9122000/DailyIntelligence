@@ -75,6 +75,22 @@ const schema = z.object({
   EDITORIAL_REVIEW: z.enum(["0", "1"]).default("0"),
 
   /**
+   * AI illustrations (lib/ai/illustration.ts): drawn by an NVIDIA-hosted image
+   * model, checked by a vision model, stored in Vercel Blob. Without
+   * BLOB_READ_WRITE_TOKEN none are made, and every story keeps its cover art.
+   * Measured on 21 October 2026: FLUX.1-dev drew a 1344×768 picture in 5s;
+   * Stable Diffusion was not available to this account and FLUX.1-schnell
+   * timed out. For the check, Nemotron VL answered in 1.5s and caught a
+   * photoreal picture with text in it; both Llama vision models timed out.
+   */
+  NVIDIA_IMAGE_URL: z.string().url().default("https://ai.api.nvidia.com/v1/genai"),
+  NVIDIA_IMAGE_MODEL: z.string().min(1).default("black-forest-labs/flux.1-dev"),
+  NVIDIA_VISION_MODEL: z.string().min(1).default("nvidia/nemotron-3.5-super-vl-120b-a12b"),
+  /** Illustrations attempted (kept or refused) per IST day. */
+  IMAGE_DAILY_LIMIT: z.coerce.number().int().min(0).max(1000).default(100),
+  BLOB_READ_WRITE_TOKEN: z.string().min(10).optional(),
+
+  /**
    * GDELT's endpoints. Public and keyless; configurable so the tests can point
    * them at recorded fixtures and never touch the network.
    */
@@ -169,6 +185,12 @@ export function smtpConfigured(): boolean {
 /** True when the AI layer has a key to call its model with. */
 export function aiConfigured(): boolean {
   return Boolean(env().NVIDIA_API_KEY);
+}
+
+/** True when illustrations can be drawn and stored: a model key and a Blob store. */
+export function illustrationsConfigured(): boolean {
+  const e = env();
+  return Boolean(e.NVIDIA_API_KEY && e.BLOB_READ_WRITE_TOKEN);
 }
 
 /** True when the YouTube source has a key. */

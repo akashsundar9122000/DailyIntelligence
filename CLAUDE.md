@@ -96,6 +96,24 @@ e2e/                  Playwright: tests/ (desktop, Pixel 7, reduced motion, axe)
   post is shown only through its platform's own embed (`showableSocial()`),
   matched to a story by its words, and feeds heat, never confidence. A platform
   is connected only after its terms are read and quoted in the catalogue.
+- **Every story has a picture, and none has one it has no right to.**
+  `storyImage()` (`src/lib/media/story-image.ts`) is the one choice: a licensed
+  photo, then an AI illustration, then a map, then the section's cover art.
+  Publisher photos are never a choice (GDELT carries their URLs; they are the
+  publishers'). A source's picture is kept only through `acceptMedia()` (its
+  own `mediaHosts`, no logo, no one else's credit) and shown only through
+  `showableMedia()`; `next.config` image hosts are held to the catalogue by a
+  test. A map needs a reliable place: an Indian state (a pin, never an
+  outline) or exactly one country abroad.
+- **An AI illustration is drawn only from the headline and section, with
+  every capitalised word removed, never for a sensitive section or a
+  headline about violence, conflict, crime, death or disaster**
+  (`illustrationPrompt()`), and shown only after a vision check answers no to
+  every question (`verdictFrom()`; a missing answer is a yes). Refused
+  pictures are never uploaded; their rows are hidden by row security. It is
+  labelled "AI illustration" on the picture itself, everywhere. NVIDIA's own
+  filter refuses some style wordings (`CONTENT_FILTERED`); the measured
+  wording is recorded beside the prompt -- change it, re-measure it.
 - **Heat is not confidence.** Two scores, stored with their components and a
   version, shown side by side. Nothing may combine them into one number.
 - **Themes are palettes, and the alert colour is reserved in every one.**

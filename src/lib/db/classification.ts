@@ -39,6 +39,7 @@ export const TABLE_CLASSES = {
   story_updates: "reference",
   story_scores: "reference",
   ai_briefings: "reference",
+  story_images: "reference",
   push_subscriptions: "owner",
   notification_events: "owner",
   ops_switches: "reference",

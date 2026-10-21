@@ -1,8 +1,10 @@
 import "server-only";
 
+import { del } from "@vercel/blob";
 import { sql } from "drizzle-orm";
 
 import { execRows, withSystem } from "@/lib/db/scope";
+import { env } from "@/lib/env";
 
 import { recordedJob } from "./jobs";
 
@@ -20,6 +22,8 @@ export type RetentionSummary = {
   items: number;
   stories: number;
   aiRejected: number;
+  /** Illustration files removed from Blob with their stories, and refused attempts aged out. */
+  illustrations: number;
   notifications: number;
   ingestionRuns: number;
   jobRuns: number;
@@ -29,9 +33,9 @@ export type RetentionSummary = {
 
 const count = async (rows: Promise<unknown[]>) => (await rows).length;
 
-export async function runRetention({ trigger }: { trigger: string }) {
-  return recordedJob<RetentionSummary>("retention", trigger, () =>
-    withSystem("retention", async (tx) => {
+export async function runRetention({ trigger, removeFiles }: { trigger: string; /** Injected in tests; Vercel Blob otherwise. */ removeFiles?: (urls: string[]) => Promise<void> }) {
+  return recordedJob<RetentionSummary>("retention", trigger, async () => {
+    const result = await withSystem("retention", async (tx) => {
       const saved = sql`select story_id from bookmarks`;
       const items = await count(
         execRows(
@@ -57,16 +61,25 @@ export async function runRetention({ trigger }: { trigger: string }) {
              where first.story_id = st.id and not exists (select 1 from raw_source_items h where h.id = st.headline_item_id)`,
       );
       // A story left with no items has nothing left to show; one a reader saved stays, its headline item with it.
+      // Its illustrations' rows go with it (cascade); their FILES are listed first, to be removed after commit.
+      const orphaned = sql`select st.id from stories st where not exists (select 1 from story_items si where si.story_id = st.id) and st.id not in (${saved})`;
+      const files = (await execRows<{ url: string }>(tx, sql`select url from story_images where url is not null and story_id in (${orphaned})`)).map((row) => row.url);
       const stories = await count(
         execRows(tx, sql`delete from stories st where not exists (select 1 from story_items si where si.story_id = st.id) and st.id not in (${saved}) returning st.id`),
       );
+      const refused = await count(execRows(tx, sql`delete from story_images where status = 'rejected' and generated_at < now() - interval '30 days' returning id`));
       const aiRejected = await count(execRows(tx, sql`delete from ai_briefings where status in ('rejected', 'failed') and generated_at < now() - interval '30 days' returning id`));
       const notifications = await count(execRows(tx, sql`delete from notification_events where created_at < now() - interval '90 days' returning id`));
       const ingestionRuns = await count(execRows(tx, sql`delete from ingestion_runs where started_at < now() - interval '30 days' returning id`));
       const jobRuns = await count(execRows(tx, sql`delete from job_runs where started_at < now() - interval '60 days' and job <> 'retention' returning id`));
       const mail = await count(execRows(tx, sql`delete from email_outbox where status in ('SENT', 'DEV') and created_at < now() - interval '30 days' returning id`));
       const rateLimits = await count(execRows(tx, sql`delete from rate_limits where window_start < now() - interval '2 days' returning key`));
-      return { items, stories, aiRejected, notifications, ingestionRuns, jobRuns, mail, rateLimits };
-    }),
-  );
+      return { summary: { items, stories, aiRejected, notifications, ingestionRuns, jobRuns, mail, rateLimits }, files, refused };
+    });
+    // After commit, never inside the transaction: a call to another service
+    // must not hold the database's one pooled connection.
+    const remove = removeFiles ?? (env().BLOB_READ_WRITE_TOKEN ? (urls: string[]) => del(urls, { token: env().BLOB_READ_WRITE_TOKEN }) : null);
+    if (remove && result.files.length > 0) await remove(result.files);
+    return { ...result.summary, illustrations: (remove ? result.files.length : 0) + result.refused };
+  });
 }

@@ -5,7 +5,8 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     /*
      * Only the asset hosts of sources cleared for media (catalogue.ts,
-     * rights.mediaHosts), so the optimiser fetches nothing else and serves
+     * rights.mediaHosts) and our own Blob store, so the optimiser fetches
+     * nothing else and serves
      * pictures from this origin -- the CSP's img-src 'self' needs no widening.
      * A test (tests/unit/media.test.ts) holds this list to the catalogue.
      */
@@ -13,6 +14,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "assets.science.nasa.gov" },
       { protocol: "https", hostname: "www.nasa.gov" },
       { protocol: "https", hostname: "images-assets.nasa.gov" },
+      // Our own AI illustrations, in this project's Vercel Blob store.
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
     ],
   },
   async headers() {

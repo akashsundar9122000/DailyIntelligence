@@ -54,6 +54,8 @@ export type StoryCard = {
    * story; it then gets an illustration or a map (lib/media/story-image.ts).
    */
   photo: { src: string; credit: string; alt: string | null } | null;
+  /** The story's checked AI illustration, if one was drawn (story_images, `ready` only). */
+  illustration: { src: string; alt: string; width: number; height: number } | null;
 };
 
 const CARD_COLUMNS = sql`
@@ -76,7 +78,13 @@ const CARD_COLUMNS = sql`
      join sources ps on ps.id = pi.source_id
     where psi.story_id = st.id and pi.media_url is not null and ${showableMedia("ps")}
     order by pi.published_at desc nulls last
-    limit 1) as photo`;
+    limit 1) as photo,
+  (select json_build_object('src', si.url, 'alt', si.alt, 'width', si.width, 'height', si.height)
+     from story_images si
+    -- Row security already hides refused pictures from readers; the status test says so here too.
+    where si.story_id = st.id and si.kind = 'ai' and si.status = 'ready'
+    order by si.generated_at desc
+    limit 1) as illustration`;
 
 /** Stories, their headline item and its source, and the score from two to six hours ago for the direction marker. */
 const FROM = sql`

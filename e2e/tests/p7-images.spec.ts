@@ -1,4 +1,4 @@
-import { SEED_PHOTO_URL, SEED_STORIES } from "../support/seed";
+import { SEED_ILLUSTRATION_URL, SEED_PHOTO_URL, SEED_STORIES } from "../support/seed";
 import { expect, test } from "../support/session";
 
 const headline = (key: string) => SEED_STORIES.find((story) => story.key === key)!.headline;
@@ -55,6 +55,15 @@ test.describe("every story has a picture", () => {
     // Served through /_next/image from this origin: the CSP's img-src 'self' is enough.
     expect(await photo.getAttribute("src")).toContain(`/_next/image?url=${encodeURIComponent(SEED_PHOTO_URL)}`);
     await expect(survey.locator("figure.story-picture figcaption")).toHaveText("Photo: E2E Photo Desk");
+  });
+
+  test("an AI illustration says so on the picture itself and in its caption", async ({ page }) => {
+    await page.goto("/app/categories/ai");
+    const model = page.locator("main article").filter({ hasText: headline("model") });
+    const picture = model.locator("figure.story-picture");
+    await expect(picture.getByText("AI illustration", { exact: true }).first()).toBeVisible();
+    await expect(picture.locator("figcaption")).toHaveText("AI illustration");
+    expect(await picture.locator("img").getAttribute("src")).toContain(`/_next/image?url=${encodeURIComponent(SEED_ILLUSTRATION_URL)}`);
   });
 
   test("the Hot now column carries a thumbnail beside each story", async ({ page }) => {

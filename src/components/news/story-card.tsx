@@ -23,10 +23,12 @@ export function KindBadge({ story }: { story: Pick<CardStory, "contentType" | "i
   return null;
 }
 
-/** A story's licensed photo, if its query found one, as the picture resolver takes it. */
-export function storedOf(story: Pick<CardStory, "photo" | "headline">): StoredImage[] | undefined {
-  if (!story.photo) return undefined;
-  return [{ kind: "photo", src: story.photo.src, alt: story.photo.alt ?? `Photo from ${story.photo.credit}`, credit: story.photo.credit }];
+/** A story's stored pictures -- its licensed photo, its AI illustration -- as the picture resolver takes them. */
+export function storedOf(story: Pick<CardStory, "photo" | "illustration">): StoredImage[] | undefined {
+  const stored: StoredImage[] = [];
+  if (story.photo) stored.push({ kind: "photo", src: story.photo.src, alt: story.photo.alt ?? `Photo from ${story.photo.credit}`, credit: story.photo.credit });
+  if (story.illustration) stored.push({ kind: "ai", ...story.illustration, credit: "AI illustration" });
+  return stored.length ? stored : undefined;
 }
 
 /** The kicker: the section, then the place. */

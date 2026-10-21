@@ -105,6 +105,13 @@ export type BriefingKind = (typeof BRIEFING_KINDS)[number];
 export const BRIEFING_STATUSES = ["ready", "review", "rejected", "failed"] as const;
 export type BriefingStatus = (typeof BRIEFING_STATUSES)[number];
 
+/** A stored picture for a story. Photos come from items (raw_source_items.media_url); this table holds what we make. */
+export const STORY_IMAGE_KINDS = ["ai"] as const;
+export type StoryImageKind = (typeof STORY_IMAGE_KINDS)[number];
+/** ready: checked and shown. rejected: failed its check -- kept to read, never shown (row security). */
+export const STORY_IMAGE_STATUSES = ["ready", "rejected"] as const;
+export type StoryImageStatus = (typeof STORY_IMAGE_STATUSES)[number];
+
 export const UPDATE_VERIFICATIONS = ["sourced", "official", "disputed"] as const;
 export type UpdateVerification = (typeof UPDATE_VERIFICATIONS)[number];
 
@@ -445,6 +452,46 @@ export const aiBriefings = pgTable(
     check("ai_briefings_kind_vocab", inVocab("kind", BRIEFING_KINDS)),
     check("ai_briefings_status_vocab", inVocab("status", BRIEFING_STATUSES)),
     check("ai_briefings_subject", sql`("kind" = 'story_explainer' AND "story_id" IS NOT NULL) OR ("kind" = 'edition_briefing' AND "edition_key" IS NOT NULL)`),
+  ],
+);
+
+/* ------------------------------------------------------------- story images */
+
+/**
+ * AI illustrations, one row per attempt. A `ready` row has passed the visual
+ * check (lib/ai/illustration.ts) and is stored in Blob; a `rejected` row has
+ * no picture, only why -- and row security hides it from the runtime role, so
+ * a query that forgot to filter could still not show it.
+ */
+export const storyImages = pgTable(
+  "story_images",
+  {
+    id: primaryId(),
+    storyId: uuid("story_id")
+      .notNull()
+      .references(() => stories.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<StoryImageKind>().notNull(),
+    status: text("status").$type<StoryImageStatus>().notNull(),
+    /** The public Blob URL, for a ready row only. */
+    url: text("url"),
+    width: integer("width"),
+    height: integer("height"),
+    /** Says what the picture shows, for a screen reader; written from the prompt, never from the image. */
+    alt: text("alt"),
+    model: text("model").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    /** The prompt as sent: the record of what was asked for. */
+    prompt: text("prompt").notNull(),
+    /** Why the check refused it, in words. */
+    rejection: text("rejection"),
+    generatedAt: namedTimestamp("generated_at"),
+  },
+  (t) => [
+    index("story_images_story").on(t.storyId, t.generatedAt.desc()),
+    index("story_images_recent").on(t.generatedAt.desc()),
+    check("story_images_kind_vocab", inVocab("kind", STORY_IMAGE_KINDS)),
+    check("story_images_status_vocab", inVocab("status", STORY_IMAGE_STATUSES)),
+    check("story_images_ready_has_url", sql`"status" <> 'ready' OR "url" IS NOT NULL`),
   ],
 );
 

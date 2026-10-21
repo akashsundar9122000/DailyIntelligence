@@ -117,3 +117,8 @@ export function timesLine(publishedAt: string | null, detectedAt: string, now: D
   const detected = `Detected ${relativeTime(detectedAt, now)}`;
   return publishedAt ? `Published ${relativeTime(publishedAt, now)} · ${detected}` : `Publication time not given · ${detected}`;
 }
+
+/** The IST calendar day an instant falls on, as a day is: a string ("2026-10-21"). */
+export function istDay(now: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}

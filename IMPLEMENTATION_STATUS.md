@@ -541,3 +541,32 @@ Not done:
 - Local gate: interrupted by the machine sleeping and load spikes (timing
   tests ran for 14 minutes); each failing file passed when re-run alone. CI is
   the run of record.
+
+## Phase 7c: AI illustrations (2026-10-21)
+
+- **Vercel Blob** store `daily-intelligence-images` (public, sin1) created and
+  connected to production, preview and development (`BLOB_READ_WRITE_TOKEN`).
+- **Models, measured with this account**: FLUX.1-dev draws 1344×768 in ~5s;
+  Stable Diffusion is not available and FLUX.1-schnell timed out. Nemotron VL
+  checks a picture in ~1.5s and caught a photoreal picture with text in it;
+  both Llama vision models timed out.
+- **`story_images`** (migration 0012) with row security (0013): readers see
+  `ready` rows only. One `ai_images` switch, `IMAGE_DAILY_LIMIT` (100/IST day).
+- **The job** runs at the end of the AI pass: recent top stories with no
+  licensed photo, not in a sensitive section, not about violence, conflict,
+  crime, death or disaster. Draw, check (eight questions; any yes refuses),
+  upload only if it passes, record. Failures are counted (`failed`,
+  `lastError`) so a provider outage does not read as "nothing to do". The
+  retention purge deletes a purged story's files from Blob after commit.
+- **Found in the live trial and fixed**: NVIDIA's filter refused every prompt
+  carrying the first style sentence (re-worded and measured); the first live
+  picture drew armed men advancing on a photographer for an attack story
+  filed under Business -- removed from Blob and the database, and the
+  headline screen and the weapons/confrontation questions added. The next run
+  drew two clean pictures and refused one with text and a flag in it.
+- Tests: unit (prompt: no names, no excerpt, sensitive and violent stories
+  refused, measured wording; verdict: any yes, a missing answer or bad JSON
+  refuses), integration (drawn and shown; refused twice: nothing uploaded,
+  invisible to readers; skipped for sensitive sections and licensed photos;
+  switch; no second picture; retention removes the file), e2e (the label on
+  the picture and in the caption, served through /_next/image).
