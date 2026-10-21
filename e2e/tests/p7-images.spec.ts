@@ -1,3 +1,4 @@
+import { E2E_CRON_SECRET } from "../support/cron";
 import { SEED_ILLUSTRATION_URL, SEED_PHOTO_URL, SEED_STORIES } from "../support/seed";
 import { expect, test } from "../support/session";
 
@@ -72,5 +73,18 @@ test.describe("every story has a picture", () => {
     const rows = column.getByRole("listitem");
     await expect(rows.first()).toBeVisible();
     expect(await column.locator("figure.story-picture").count()).toBe(await rows.count());
+  });
+});
+
+test.describe("the illustration pass", () => {
+  test("refuses a caller without the scheduler's secret, and says when it could not draw, rather than reporting nothing", async ({ request }) => {
+    expect((await request.post("/api/cron/illustrate")).status()).toBe(401);
+    const run = await request.post("/api/cron/illustrate", { headers: { authorization: `Bearer ${E2E_CRON_SECRET}`, "x-trigger": "manual" } });
+    expect(run.status()).toBe(200);
+    const body = (await run.json()) as { ok: boolean; drawn: number; failed: number; lastError?: string };
+    // The suite's image model is a stand-in with no image route: nothing is drawn, and the run says why.
+    expect(body).toMatchObject({ ok: true, drawn: 0 });
+    expect(body.failed).toBeGreaterThan(0);
+    expect(body.lastError).toMatch(/illustration model answered 404/);
   });
 });

@@ -68,6 +68,27 @@ jobs:
             echo "::error::The AI pass answered $status."
             exit 1
           fi
+      - name: Call the illustration pass
+        # Its own request and its own time: drawn on the AI pass's leftover time, no picture was ever drawn.
+        if: always()
+        env:
+          TICK_URL: ${{ secrets.TICK_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          TRIGGER: ${{ github.event_name == 'workflow_dispatch' && 'manual' || 'github' }}
+        run: |
+          if [ -z "$TICK_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::TICK_URL and CRON_SECRET must be set as repository secrets."
+            exit 1
+          fi
+          status=$(curl -sS -o response.json -w '%{http_code}' --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" -H "x-trigger: $TRIGGER" "$TICK_URL/api/cron/illustrate")
+          # Counts only: no headline, no prompt, no picture.
+          head -c 600 response.json
+          echo
+          if [ "$status" != "200" ]; then
+            echo "::error::The illustration pass answered $status."
+            exit 1
+          fi
       - name: Call the notification pass
         # After the AI pass, so a scheduled briefing goes out with the newest edition.
         if: always()

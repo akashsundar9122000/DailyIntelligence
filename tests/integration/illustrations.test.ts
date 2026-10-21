@@ -132,6 +132,20 @@ describe("illustrations", () => {
     expect(image.prompts).toEqual([]);
   });
 
+  it("say when they stopped for time, so a run that drew nothing never reads as one with nothing to do", async () => {
+    await seedStory();
+    const image = painter();
+    const summary = await runIllustrations({ now: new Date(), deadline: Date.now() + 5_000, image, vision: passes, upload: store().upload as never });
+    expect(summary).toMatchObject({ drawn: 0, stoppedFor: "time" });
+    expect(image.prompts).toEqual([]);
+  });
+
+  it("stop when the whole AI pass is switched off, not only their own switch", async () => {
+    await seedStory();
+    await ownerQuery(`insert into ops_switches (key, enabled, reason) values ('ai', false, 'test')`);
+    expect(await run(passes)).toMatchObject({ paused: true, drawn: 0 });
+  });
+
   it("leave the store with their story: the retention purge removes the file too", async () => {
     const storyId = await seedStory();
     await run(passes);

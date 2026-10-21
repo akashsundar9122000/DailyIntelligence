@@ -4,18 +4,22 @@ import { put } from "@vercel/blob";
 import { sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 
-import { IMAGE_PROMPT_VERSION, illustrationPrompt, type ImageModel, type Picture, type VisionCheck } from "@/lib/ai/illustration";
+import { IMAGE_PROMPT_VERSION, illustrationPrompt, nvidiaImageModel, nvidiaVisionCheck, type ImageModel, type Picture, type VisionCheck } from "@/lib/ai/illustration";
 import { AiOutOfTime, AiUnavailable } from "@/lib/ai/nvidia-client";
 import { execRows, withSystem } from "@/lib/db/scope";
 import { showableMedia } from "@/lib/db/sql";
-import { env } from "@/lib/env";
+import { env, illustrationsConfigured } from "@/lib/env";
 import { istDay } from "@/lib/format/date";
 
+import { recordedJob } from "./jobs";
 import { isOn } from "./ops";
 
 /**
- * Illustrations for the stories readers see first, run at the end of the AI
- * pass with whatever time is left.
+ * Illustrations for the stories readers see first: their own scheduled job
+ * (/api/cron/illustrate, after the AI pass), with their own time budget.
+ * They first ran at the end of the AI pass, on whatever time it left, and in
+ * production that was never enough: six explainers took 47 of its 50 seconds,
+ * and the job drew nothing, every tick, saying only "0".
  *
  * The same rules as the explainers:
  *   - No model call and no upload inside a transaction: read, close, call,
@@ -42,7 +46,17 @@ export function blobUploader(): Uploader {
  * again on a later run, but counted, so a run that drew nothing because the
  * provider is down does not read the same as a run with nothing to do.
  */
-export type IllustrationSummary = { drawn: number; refused: number; failed: number; left: number; paused?: boolean; lastError?: string };
+export type IllustrationSummary = {
+  drawn: number;
+  refused: number;
+  failed: number;
+  left: number;
+  paused?: boolean;
+  configured?: boolean;
+  /** Why the run stopped with stories still waiting: never a silent zero. */
+  stoppedFor?: "time" | "daily limit" | "per-run limit";
+  lastError?: string;
+};
 
 const PER_RUN = 3;
 /** Attempts per story: one, and one more with a new seed if the check refuses it. */
@@ -87,13 +101,25 @@ async function record(row: { storyId: string; status: "ready" | "rejected"; url:
 }
 
 export async function runIllustrations({ now, deadline, image, vision, upload }: { now: Date; deadline: number; image: ImageModel; vision: VisionCheck; upload: Uploader }): Promise<IllustrationSummary> {
-  if (!(await isOn("ai_images"))) return { drawn: 0, refused: 0, failed: 0, left: 0, paused: true };
+  // The whole AI pass switched off stops these too: a switch that left pictures being drawn would not be off.
+  if (!(await isOn("ai")) || !(await isOn("ai_images"))) return { drawn: 0, refused: 0, failed: 0, left: 0, paused: true };
   let left = await leftToday(now);
-  const summary: { drawn: number; refused: number; failed: number; lastError?: string } = { drawn: 0, refused: 0, failed: 0 };
+  const summary: { drawn: number; refused: number; failed: number; lastError?: string; stoppedFor?: IllustrationSummary["stoppedFor"] } = { drawn: 0, refused: 0, failed: 0 };
   const queue = (await dueStories()).map((story) => ({ story, request: illustrationPrompt(story) })).filter((entry) => entry.request !== null);
 
   for (const { story, request } of queue) {
-    if (summary.drawn + summary.refused + summary.failed >= PER_RUN || left <= 0 || deadline - Date.now() < 20_000) break;
+    if (summary.drawn + summary.refused + summary.failed >= PER_RUN) {
+      summary.stoppedFor = "per-run limit";
+      break;
+    }
+    if (left <= 0) {
+      summary.stoppedFor = "daily limit";
+      break;
+    }
+    if (deadline - Date.now() < 20_000) {
+      summary.stoppedFor = "time";
+      break;
+    }
     const reasons: string[] = [];
     let model = "";
     try {
@@ -118,7 +144,10 @@ export async function runIllustrations({ now, deadline, image, vision, upload }:
       }
     } catch (error) {
       // Out of time is nothing, not a failure; an unreachable model is tried again on a later run.
-      if (error instanceof AiOutOfTime) break;
+      if (error instanceof AiOutOfTime) {
+        summary.stoppedFor = "time";
+        break;
+      }
       if (error instanceof AiUnavailable) {
         // Its message is ours (a status code at most), never the provider's body or the key.
         summary.failed += 1;
@@ -129,4 +158,14 @@ export async function runIllustrations({ now, deadline, image, vision, upload }:
     }
   }
   return { ...summary, left };
+}
+
+/** The scheduled job: the hosted models and Blob in production; injected in tests. */
+export async function runIllustrationJob({ trigger, budgetMs = 50_000, illustrators }: { trigger: string; budgetMs?: number; illustrators?: { image: ImageModel; vision: VisionCheck; upload: Uploader } }) {
+  return recordedJob<IllustrationSummary>("illustrate", trigger, async () => {
+    const deadline = Date.now() + budgetMs;
+    if (!illustrators && !illustrationsConfigured()) return { drawn: 0, refused: 0, failed: 0, left: 0, configured: false };
+    const draw = illustrators ?? { image: nvidiaImageModel({ deadline: deadline - 1_000 }), vision: nvidiaVisionCheck({ deadline: deadline - 1_000 }), upload: blobUploader() };
+    return runIllustrations({ now: new Date(), deadline: deadline - 2_000, ...draw });
+  });
 }

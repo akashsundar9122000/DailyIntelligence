@@ -32,7 +32,7 @@ for (const path of ["/", "/login", "/sources", "/status", "/privacy", "/terms", 
 
 test("the scheduler's endpoints refuse a caller without the secret", async ({ request }) => {
   // 401, not 503: production has a secret, and a 503 here would mean it had gone missing and the 15-minute tick was failing.
-  for (const path of ["/api/cron/daily", "/api/cron/tick", "/api/cron/enrich", "/api/cron/notify"]) {
+  for (const path of ["/api/cron/daily", "/api/cron/tick", "/api/cron/enrich", "/api/cron/illustrate", "/api/cron/notify"]) {
     expect((await request.get(path)).status(), path).toBe(401);
   }
 });

@@ -151,6 +151,15 @@ export default defineConfig({
       NVIDIA_API_KEY: "end-to-end-placeholder",
       NVIDIA_BASE_URL: `http://127.0.0.1:${MODEL_STUB_PORT}/v1`,
       NVIDIA_MODEL: "stub/scripted",
+      /*
+       * Illustrations: the image model at the same stand-in, which has no
+       * image route, and a placeholder store token. Set here because `next
+       * start` reads .env.local, which holds the REAL Blob token on a machine
+       * where the store was connected: without these the suite could draw with
+       * a real model and write into the real store.
+       */
+      NVIDIA_IMAGE_URL: `http://127.0.0.1:${MODEL_STUB_PORT}/v1/genai`,
+      BLOB_READ_WRITE_TOKEN: "end-to-end-placeholder-no-store",
 
       /* RAISED, not disabled: turning the limiter off would leave that code
          path untested. The suite signs up and signs in far more often than a

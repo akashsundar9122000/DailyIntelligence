@@ -570,3 +570,11 @@ Not done:
   invisible to readers; skipped for sensitive sections and licensed photos;
   switch; no second picture; retention removes the file), e2e (the label on
   the picture and in the caption, served through /_next/image).
+- **After deploying 7c (`e49e3c9`)**: the Tick ran and drew nothing -- the
+  explainers had used 47 of the AI pass's 50 seconds, and illustrations ran on
+  what was left. Illustrations are now their own job (`/api/cron/illustrate`,
+  `illustrate` in job_runs) with their own budget, called by the Tick after the
+  AI pass, paused by either the `ai` or the `ai_images` switch, and a run that
+  stops early says why (`stoppedFor`). The e2e suite points the image model at
+  its stand-in and the store at a placeholder, because `next start` would
+  otherwise read the real Blob token from .env.local.

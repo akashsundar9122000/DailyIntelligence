@@ -8,15 +8,13 @@ import { BRIEFING_PROMPT_VERSION, writeBriefing, type BriefingStory } from "@/li
 import { bundleHash, loadBundle } from "@/lib/ai/bundle";
 import { claimsOf, EXPLAINER_PROMPT_VERSION, readArticleText, writeExplainer, type Explainer, type StoryBundle } from "@/lib/ai/explainer";
 import { nvidiaEmbedder, vectorLiteral, type Embedder } from "@/lib/ai/embeddings";
-import { nvidiaImageModel, nvidiaVisionCheck, type ImageModel, type VisionCheck } from "@/lib/ai/illustration";
 import { AiOutOfTime, AiUnavailable, nvidiaModel, type ChatModel } from "@/lib/ai/nvidia-client";
 import type { BriefingStatus } from "@/lib/db/schema/news";
 import { execRows, withSystem } from "@/lib/db/scope";
 import { textArray, uuidArray } from "@/lib/db/sql";
-import { aiConfigured, env, illustrationsConfigured } from "@/lib/env";
+import { aiConfigured, env } from "@/lib/env";
 import { istDay } from "@/lib/format/date";
 
-import { blobUploader, runIllustrations, type IllustrationSummary, type Uploader } from "./illustrations";
 import { recordedJob } from "./jobs";
 import { isOn } from "./ops";
 
@@ -68,8 +66,6 @@ export type EnrichSummary = {
   briefing: { key: string; status: Outcome | "not due" } | null;
   /** Headlines embedded for search by meaning this run. */
   embedded?: number;
-  /** AI illustrations drawn, and refused by their check, this run. */
-  illustrated?: IllustrationSummary;
 };
 
 async function callsLeftToday(now: Date): Promise<number> {
@@ -273,22 +269,7 @@ async function editionBriefing(model: ChatModel, now: Date, deadline: number): P
   }
 }
 
-type Illustrators = { image: ImageModel; vision: VisionCheck; upload: Uploader };
-
-export async function runEnrichment({
-  trigger,
-  budgetMs = 50_000,
-  model,
-  embedder,
-  illustrators,
-}: {
-  trigger: string;
-  budgetMs?: number;
-  model?: ChatModel;
-  embedder?: Embedder | null;
-  /** Injected in tests. Absent in production: the hosted models and Blob, when configured. A test that injects only a chat model gets none. */
-  illustrators?: Illustrators | null;
-}) {
+export async function runEnrichment({ trigger, budgetMs = 50_000, model, embedder }: { trigger: string; budgetMs?: number; model?: ChatModel; embedder?: Embedder | null }) {
   return recordedJob<EnrichSummary>("enrich", trigger, async () => {
     const now = new Date();
     const deadline = Date.now() + budgetMs;
@@ -319,10 +300,6 @@ export async function runEnrichment({
     await Promise.all(Array.from({ length: PARALLEL }, worker));
 
     const briefing = left > 0 ? await editionBriefing(chat, now, deadline) : null;
-    // Pictures after words: an explainer is evidence, an illustration decoration.
-    const draw = illustrators === undefined ? (!model && illustrationsConfigured() ? { image: nvidiaImageModel({ deadline: deadline - 1_000 }), vision: nvidiaVisionCheck({ deadline: deadline - 1_000 }), upload: blobUploader() } : null) : illustrators;
-    let illustrated: IllustrationSummary | undefined;
-    if (draw) illustrated = await runIllustrations({ now, deadline: deadline - 4_000, ...draw });
     // Last, and with whatever time is left: search by meaning is a convenience, the explainers are not.
     let embedded = 0;
     const vectors = embedder === undefined ? (model ? null : nvidiaEmbedder({ deadline: deadline - 1_000 })) : embedder;
@@ -333,6 +310,6 @@ export async function runEnrichment({
         if (!(error instanceof AiUnavailable)) throw error;
       }
     }
-    return { configured: true, explained: counts.ready, rejected: counts.rejected, failed: counts.failed, dailyCallsLeft: left, briefing, embedded, illustrated };
+    return { configured: true, explained: counts.ready, rejected: counts.rejected, failed: counts.failed, dailyCallsLeft: left, briefing, embedded };
   });
 }
