@@ -71,7 +71,8 @@ test.describe("the daily job", () => {
     expect(response.status()).toBe(200);
     const body = (await response.json()) as { ok: boolean; purged: Record<string, number> };
     expect(body.ok).toBe(true);
-    expect(Object.keys(body.purged).sort()).toEqual(["aiRejected", "ingestionRuns", "items", "jobRuns", "mail", "notifications", "rateLimits", "stories"]);
+    // illustrations (phase 7c): illustration files removed from the store with their stories, and refused attempts aged out.
+    expect(Object.keys(body.purged).sort()).toEqual(["aiRejected", "illustrations", "ingestionRuns", "items", "jobRuns", "mail", "notifications", "rateLimits", "stories"]);
   });
 });
 
