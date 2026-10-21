@@ -5,7 +5,7 @@ import { cache } from "react";
 
 import { DatabaseNotConfigured } from "@/lib/db/client";
 import { execRows, withPublic } from "@/lib/db/scope";
-import { isoInstant, showableSource, textArray, uuidArray } from "@/lib/db/sql";
+import { isoInstant, showableMedia, showableSource, textArray, uuidArray } from "@/lib/db/sql";
 import type { ContentType, StoryScope, StoryState } from "@/lib/db/schema/news";
 
 /**
@@ -48,6 +48,12 @@ export type StoryCard = {
   lastUpdatedAt: string;
   /** "rising" when heat has climbed since an earlier scoring, "cooling" when it has fallen; "steady" otherwise. */
   direction: "rising" | "steady" | "cooling";
+  /**
+   * A licensed picture from one of the story's items, if any: the newest
+   * whose source is cleared for media (showableMedia). Null for almost every
+   * story; it then gets an illustration or a map (lib/media/story-image.ts).
+   */
+  photo: { src: string; credit: string; alt: string | null } | null;
 };
 
 const CARD_COLUMNS = sql`
@@ -63,7 +69,14 @@ const CARD_COLUMNS = sql`
     when prev.heat is null then 'steady'
     when st.heat >= prev.heat + 8 then 'rising'
     when st.heat <= prev.heat - 8 then 'cooling'
-    else 'steady' end as direction`;
+    else 'steady' end as direction,
+  (select json_build_object('src', pi.media_url, 'credit', ps.name, 'alt', pi.metadata->>'mediaAlt')
+     from story_items psi
+     join raw_source_items pi on pi.id = psi.item_id
+     join sources ps on ps.id = pi.source_id
+    where psi.story_id = st.id and pi.media_url is not null and ${showableMedia("ps")}
+    order by pi.published_at desc nulls last
+    limit 1) as photo`;
 
 /** Stories, their headline item and its source, and the score from two to six hours ago for the direction marker. */
 const FROM = sql`

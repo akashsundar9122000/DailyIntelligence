@@ -41,6 +41,12 @@ export type SourceDefinition = {
     excerpt: boolean;
     aiSummary: boolean;
     media: boolean;
+    /**
+     * With `media`, the only hosts a picture may come from: the source's own
+     * asset servers. A picture from anywhere else -- a partner's, an
+     * embedded third party's -- is not covered by the source's terms.
+     */
+    mediaHosts?: string[];
     attribution: string;
     /** A sentence for the public directory: why it is in, or why it is not. */
     note: string;
@@ -194,16 +200,18 @@ export const SOURCE_CATALOGUE: SourceDefinition[] = [
     rights: {
       status: "cleared",
       termsUrl: "https://www.nasa.gov/nasa-brand-center/images-and-media/",
-      checkedOn: CHECKED,
+      // Images and media read again on 2026-10-21, when pictures were turned on.
+      checkedOn: "2026-10-21",
       commercialUse: true,
       headline: true,
       excerpt: true,
       aiSummary: true,
-      media: false,
+      media: true,
+      mediaHosts: ["assets.science.nasa.gov", "www.nasa.gov", "images-assets.nasa.gov"],
       attribution: "Source: NASA",
-      note: "NASA's news releases are generally not under US copyright, and may be used factually without implying endorsement, with NASA acknowledged.",
+      note: "NASA's news releases and its own imagery are generally not under US copyright, and may be used factually without implying endorsement, with NASA acknowledged. Its insignia and logos, and third parties' pictures it shows, are not used.",
       operativeQuote:
-        "NASA content ... generally are not subject to copyright in the United States. ... NASA content used in a factual manner that does not imply endorsement may be used without needing explicit permission. NASA should be acknowledged as the source of the material.",
+        "NASA content -- images, audio, video, and media files ... -- generally are not subject to copyright in the United States. NASA content used in a factual manner that does not imply endorsement may be used without needing explicit permission. ... The NASA Insignia, Logotype, identifiers, and imagery are not in the public domain. ... NASA occasionally uses copyright-protected material of third parties with permission on its website. Those images will be marked identified as copyright protected with the name of the copyright holder.",
       retentionDays: null,
     },
     pollIntervalSeconds: 1800,

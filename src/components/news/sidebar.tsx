@@ -4,7 +4,7 @@ import { relativeTime } from "@/lib/format/date";
 import { storyImage } from "@/lib/media/story-image";
 
 import { SectionHead } from "./edition";
-import type { CardStory } from "./story-card";
+import { storedOf, type CardStory } from "./story-card";
 import { StoryPicture } from "./story-image";
 
 /** The numbered Hot Now column: heat with its direction, beside how well each is sourced. */
@@ -31,7 +31,7 @@ export function HotColumn({ stories, now }: { stories: CardStory[]; now: Date })
                 {story.sourceCount === 1 ? "source" : "sources"} · {relativeTime(story.lastUpdatedAt, now)}
               </p>
             </div>
-            <StoryPicture image={storyImage({ ...story, stored: story.images })} variant="thumb" />
+            <StoryPicture image={storyImage({ ...story, stored: story.images ?? storedOf(story) })} variant="thumb" />
           </li>
         ))}
       </ol>
@@ -66,7 +66,7 @@ export function BriefingColumn({ entries }: { entries: { story: CardStory; reaso
               )}
               {reason ? <p className="mt-0.5 text-xs text-text-tertiary">{reason}</p> : null}
             </div>
-            <StoryPicture image={storyImage({ ...story, stored: story.images })} variant="thumb" />
+            <StoryPicture image={storyImage({ ...story, stored: story.images ?? storedOf(story) })} variant="thumb" />
           </li>
         ))}
       </ol>

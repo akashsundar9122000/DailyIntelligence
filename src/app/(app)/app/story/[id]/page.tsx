@@ -16,7 +16,7 @@ import { ScoreExplainer } from "@/components/news/score-explainer";
 import { ScorePair } from "@/components/news/score-pair";
 import { StoryPicture } from "@/components/news/story-image";
 import { StoryActions } from "@/components/news/story-actions";
-import { KindBadge, kickerOf, StoryCard } from "@/components/news/story-card";
+import { KindBadge, kickerOf, StoryCard, storedOf } from "@/components/news/story-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShowMore } from "@/components/ui/show-more";
@@ -179,7 +179,7 @@ export default async function StoryPage({ params, searchParams }: { params: Prom
           <ReaderTools text={`${story.headline}. ${explainer ? explainer.content.oneMinute.map((claim) => claim.text).join(" ") : account}`} />
         </div>
         </div>
-        <StoryPicture image={storyImage(story)} variant="hero" priority className="lg:mt-1" />
+        <StoryPicture image={storyImage({ ...story, stored: storedOf(story) })} variant="hero" priority className="lg:mt-1" />
       </header>
 
       <div className="grid gap-12 pt-8 lg:grid-cols-[minmax(0,1fr)_22rem]">

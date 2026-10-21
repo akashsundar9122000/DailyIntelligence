@@ -34,6 +34,18 @@ export function showableSource(): SQL {
 }
 
 /**
+ * Whether a picture an item carries may be shown, for a query that joined
+ * that item's source under `alias`. The source must be showable AND still
+ * licensed for media: a source whose media rights are withdrawn loses its
+ * pictures on the next request, though the stored URLs remain. The picture
+ * itself passed acceptMedia() when it was stored.
+ */
+export function showableMedia(alias: string): SQL {
+  const table = sql.raw(alias);
+  return sql`(${table}.rights_status = 'cleared' and ${table}.headline_display_allowed and ${table}.media_reuse_allowed)`;
+}
+
+/**
  * Whether a social post may be shown, through its platform's own embed, on a
  * query that joined `sources src`. Narrower than showableSource in one way --
  * the post's source must still be cleared and switched on -- and different in

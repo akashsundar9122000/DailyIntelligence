@@ -514,3 +514,30 @@ Not done:
   Pope (maps now need one country), small countries drew as shards, the
   sidebars had no pictures, and captions were read twice.
 - Budget: shared 167 KB, all chunks 467 KB (pictures are drawn on the server).
+
+## Phase 7b: licensed photos (2026-10-21)
+
+- **NASA is cleared for media** (terms read again 2026-10-21 and quoted in the
+  catalogue): its own imagery, from its own asset hosts only. Its insignia and
+  logos are not public domain, and third parties' pictures it shows are marked
+  with their holder, so `acceptMedia()` (`src/lib/ingestion/media.ts`) refuses
+  a picture from any other host, one whose name, alt or caption points to a
+  logo, and one credited to anyone but NASA -- in the pipeline, before storing,
+  as excerpts are.
+- The RSS adapter offers one candidate per item: a media element, or the first
+  image in the item's HTML with its figure caption as the credit.
+- Cards and the story page show it (`showableMedia()`, newest licensed picture
+  in the story), through `/_next/image` from this origin; `next.config`'s
+  remote hosts are held to the catalogue by a test.
+- Tests: unit (extraction; the rule: own picture kept, ESA-credited and logo
+  refused, other hosts and http refused, uncleared sources keep nothing),
+  integration (a tick keeps NASA's own picture and drops the third party's;
+  GDELT and PIB keep none), e2e (a seeded photo through the optimiser,
+  credited "Photo: …"). The old "no image from any source" rule was replaced by
+  this stricter one rather than deleted.
+- YouTube thumbnails: allowed by its policies only with YouTube's official,
+  unmodified logo linked to the video. Not built yet: waiting on whether to add
+  the official logo asset.
+- Local gate: interrupted by the machine sleeping and load spikes (timing
+  tests ran for 14 minutes); each failing file passed when re-run alone. CI is
+  the run of record.

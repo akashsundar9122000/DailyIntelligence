@@ -1,4 +1,4 @@
-import { SEED_STORIES } from "../support/seed";
+import { SEED_PHOTO_URL, SEED_STORIES } from "../support/seed";
 import { expect, test } from "../support/session";
 
 const headline = (key: string) => SEED_STORIES.find((story) => story.key === key)!.headline;
@@ -45,6 +45,16 @@ test.describe("every story has a picture", () => {
     await expect(hero).toBeVisible();
     await expect(hero.getByRole("img", { name: "Map of India marking Kerala" })).toBeVisible();
     await expect(hero.locator("figcaption")).toHaveText(/Map: Natural Earth/);
+  });
+
+  test("a story with a licensed picture shows it, from this site's optimiser, credited to its source", async ({ page }) => {
+    await page.goto("/app/categories/science");
+    const survey = page.locator("main article").filter({ hasText: headline("survey") });
+    const photo = survey.getByRole("img", { name: "Stars over an observatory dome" });
+    await expect(photo).toBeVisible();
+    // Served through /_next/image from this origin: the CSP's img-src 'self' is enough.
+    expect(await photo.getAttribute("src")).toContain(`/_next/image?url=${encodeURIComponent(SEED_PHOTO_URL)}`);
+    await expect(survey.locator("figure.story-picture figcaption")).toHaveText("Photo: E2E Photo Desk");
   });
 
   test("the Hot now column carries a thumbnail beside each story", async ({ page }) => {

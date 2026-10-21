@@ -12,6 +12,7 @@ import { confidence, heat, importance, SCORE_VERSION, storyState, type StoryFact
 import { recordedJob } from "@/lib/services/jobs";
 import { switchesOff } from "@/lib/services/ops";
 
+import { acceptMedia } from "./media";
 import { normalizeTitle, sameStory, significantTokens, titleSignature, urlHash } from "./normalize";
 import { ADAPTERS, SOCIAL_ADAPTERS, syncCatalogue } from "./registry";
 import { SourceError, type FetchFn, type IncomingItem, type SourceContext } from "./types";
@@ -59,8 +60,9 @@ type StoredItem = { id: string; title: string; urlHash: string; scope: "india" |
  * Insert what is new, touch what is known, and return only the new.
  *
  * RIGHTS ARE APPLIED HERE, before anything is written: an excerpt is kept only
- * where the source's terms allow one, and no media URL is kept at all until a
- * source licenses it. A field we may not show is a field we do not store.
+ * where the source's terms allow one, and a picture only where the source
+ * licenses media and acceptMedia() passes it. A field we may not show is a
+ * field we do not store.
  */
 async function storeItems(tx: Tx, source: SourceRow, items: IncomingItem[]): Promise<{ inserted: StoredItem[]; duplicates: number }> {
   if (items.length === 0) return { inserted: [], duplicates: 0 };
@@ -68,11 +70,14 @@ async function storeItems(tx: Tx, source: SourceRow, items: IncomingItem[]): Pro
   const unique = [...new Map(items.map((item) => [item.providerItemId, item])).values()];
   const rows = unique.map((item) => {
     const hash = urlHash(item.url);
+    // A picture is kept only when the source licenses media AND this one
+    // passes the source's rule: its own hosts, no logo, no one else's credit.
+    const media = source.mediaAllowed ? acceptMedia(source.key, item.media) : null;
     return sql`(${uuidv7()}::uuid, ${source.id}::uuid, ${item.providerItemId}, ${item.url}, ${hash}, ${item.publisherDomain}, ${item.publisherName},
       ${item.title}, ${normalizeTitle(item.title)}, ${source.excerptAllowed ? item.excerpt : null}, ${item.author}, ${item.language},
-      ${item.contentType satisfies ContentType}, ${null}, ${item.publishedAt}::timestamptz, ${item.sourceUpdatedAt}::timestamptz,
+      ${item.contentType satisfies ContentType}, ${media?.url ?? null}, ${item.publishedAt}::timestamptz, ${item.sourceUpdatedAt}::timestamptz,
       ${textArray(item.categories)}, ${textArray(item.eventCountries)}, ${textArray(item.indianStates)}, ${JSON.stringify(item.entities)}::jsonb,
-      ${JSON.stringify(item.metadata)}::jsonb,
+      ${JSON.stringify(media?.alt ? { ...item.metadata, mediaAlt: media.alt.slice(0, 300) } : item.metadata)}::jsonb,
       ${source.retentionDays === null ? null : sql`now() + make_interval(days => ${source.retentionDays})`})`;
   });
   const result = await execRows<{ id: string; inserted: boolean; url_hash: string; title: string; categories: string[]; event_countries: string[]; indian_states: string[] }>(

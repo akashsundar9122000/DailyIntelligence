@@ -67,6 +67,14 @@ function fakeInternet(overrides: Record<string, () => Response> = {}) {
     [`https://fixtures.invalid/gdeltv2/${stamp}.gkg.csv.zip`]: () => new Response(zipSync({ [`${stamp}.gkg.csv`]: strToU8(GKG_LINES.join("\n")) }), { headers: { "content-type": "application/zip" } }),
     "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3&reg=3": () =>
       new Response(RSS("Ministry announces relief for flood-hit hill district villages", "https://pib.gov.in/PressReleaseIframePage.aspx?PRID=1"), { headers: { etag: '"pib-1"' } }),
+    // Invented test markup shaped like NASA's feed: one picture of its own, one a third party's.
+    "https://www.nasa.gov/news-release/feed/": () =>
+      new Response(`<?xml version="1.0"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>NASA</title>
+        <item><title>Rover finds layered rock on a crater floor</title><link>https://www.nasa.gov/news-release/layered-rock/</link><guid>nasa-1</guid>
+          <content:encoded><![CDATA[<p>Release.</p><figure><img src="https://assets.science.nasa.gov/dynamicimage/a/rock.jpg?w=2048&#038;h=1365" alt="Layered rock on a crater floor"></figure>]]></content:encoded></item>
+        <item><title>Telescope partners share a new nebula image</title><link>https://www.nasa.gov/news-release/nebula/</link><guid>nasa-2</guid>
+          <content:encoded><![CDATA[<figure><img src="https://www.nasa.gov/wp-content/uploads/nebula.jpg" alt="A nebula"><figcaption>Image credit: ESA/Hubble</figcaption></figure>]]></content:encoded></item>
+      </channel></rss>`),
     ...overrides,
   };
   const fetchFn = async (input: string, init?: RequestInit) => {
@@ -121,7 +129,7 @@ describe("a tick", () => {
     expect(stories.find((story) => story.headline.startsWith("Ministry"))).toMatchObject({ official_count: 1, scope: "india" });
   });
 
-  it("applies rights before writing: no excerpt kept from GDELT, an excerpt kept from PIB, no media from anyone", async () => {
+  it("applies rights before writing: no excerpt kept from GDELT, an excerpt kept from PIB, a picture kept only where licensed", async () => {
     await runTick({ trigger: "test", budgetMs: 20_000, fetchFn: fakeInternet().fetchFn });
     const rows = await ownerQuery<{ key: string; excerpt: string | null; media_url: string | null; published_at: Date | null; canonical_url: string }>(
       "select s.key, r.excerpt, r.media_url, r.published_at, r.canonical_url from raw_source_items r join sources s on s.id = r.source_id",
@@ -132,7 +140,12 @@ describe("a tick", () => {
     // PIB gives no date: none is invented.
     expect(pib.published_at).toBeNull();
     expect(pib.canonical_url).toBe("https://pib.gov.in/PressReleasePage.aspx?PRID=1");
-    expect(rows.every((row) => row.media_url === null)).toBe(true);
+    // Pictures: none from GDELT or PIB, whose terms do not license them; NASA's
+    // own, from its own host; never a third party's that NASA shows.
+    expect(rows.filter((row) => row.key !== "nasa-news").every((row) => row.media_url === null)).toBe(true);
+    const nasa = rows.filter((row) => row.key === "nasa-news");
+    expect(nasa.find((row) => row.canonical_url.includes("layered-rock"))?.media_url).toBe("https://assets.science.nasa.gov/dynamicimage/a/rock.jpg?w=2048&h=1365");
+    expect(nasa.find((row) => row.canonical_url.includes("nebula"))?.media_url).toBeNull();
     // Tracking parameters are gone from stored links.
     expect(rows.some((row) => row.canonical_url.includes("utm_"))).toBe(false);
   });

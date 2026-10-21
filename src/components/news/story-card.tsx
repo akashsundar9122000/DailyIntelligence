@@ -23,6 +23,12 @@ export function KindBadge({ story }: { story: Pick<CardStory, "contentType" | "i
   return null;
 }
 
+/** A story's licensed photo, if its query found one, as the picture resolver takes it. */
+export function storedOf(story: Pick<CardStory, "photo" | "headline">): StoredImage[] | undefined {
+  if (!story.photo) return undefined;
+  return [{ kind: "photo", src: story.photo.src, alt: story.photo.alt ?? `Photo from ${story.photo.credit}`, credit: story.photo.credit }];
+}
+
 /** The kicker: the section, then the place. */
 export function kickerOf(story: Pick<CardStory, "category" | "scope" | "states">): string {
   const section = categoryFor(story.category ?? "")?.label;
@@ -71,7 +77,7 @@ export function StoryCard({
   const others = story.sourceCount - 1;
   // Every story has a picture: a licensed photo, a video, an AI illustration,
   // a map or its section's cover art (lib/media/story-image.ts).
-  const image = storyImage({ ...story, stored: story.images });
+  const image = storyImage({ ...story, stored: story.images ?? storedOf(story) });
   const wide = variant === "lead" || variant === "standard";
   return (
     <article className={cn("group relative flex flex-col", variant === "row" && "sm:flex-row sm:items-start sm:gap-6", className)} aria-labelledby={`story-${story.id}`}>

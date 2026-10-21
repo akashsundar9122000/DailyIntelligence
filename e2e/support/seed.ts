@@ -23,6 +23,8 @@ export type SeedStory = {
   importance: number;
   publishers: string[];
   official?: boolean;
+  /** The headline item comes from a source cleared for media, and carries a picture on its asset host. */
+  photo?: boolean;
   minutesAgo: number;
 };
 
@@ -31,7 +33,7 @@ export const SEED_STORIES: SeedStory[] = [
   { key: "monsoon", headline: "Monsoon reaches the southern districts two days early", category: "climate", scope: "india", states: ["KL"], heat: 55, confidence: 78, importance: 64, publishers: ["seed-official.example", "alpha.example"], official: true, minutesAgo: 45 },
   { key: "final", headline: "Regional side wins a tense cricket final on the last ball", category: "cricket", scope: "india", states: ["MH"], heat: 88, confidence: 32, importance: 40, publishers: ["delta.example", "beta.example"], minutesAgo: 10 },
   { key: "festival", headline: "Independent film festival announces its opening programme", category: "cinema", scope: "india", states: ["KA"], heat: 38, confidence: 44, importance: 28, publishers: ["gamma.example"], minutesAgo: 240 },
-  { key: "survey", headline: "Observatory releases a new open map of the southern sky", category: "science", scope: "global", countries: ["AU"], heat: 30, confidence: 51, importance: 33, publishers: ["epsilon.example", "zeta.example"], minutesAgo: 300 },
+  { key: "survey", headline: "Observatory releases a new open map of the southern sky", category: "science", scope: "global", countries: ["AU"], photo: true, heat: 30, confidence: 51, importance: 33, publishers: ["epsilon.example", "zeta.example"], minutesAgo: 300 },
   { key: "river", headline: "Two neighbouring countries agree on a shared river survey", category: "world-politics", scope: "global", countries: ["FR", "DE"], heat: 46, confidence: 59, importance: 55, publishers: ["eta.example", "theta.example", "iota.example"], minutesAgo: 180 },
   { key: "chip", headline: "Chip makers outline a plan for quieter data centre cooling", category: "technology", scope: "global", countries: ["US"], heat: 41, confidence: 47, importance: 36, publishers: ["kappa.example", "lambda.example"], minutesAgo: 120 },
   { key: "model", headline: "Research lab publishes an open AI model for translation", category: "ai", scope: "global", countries: ["US"], heat: 63, confidence: 52, importance: 45, publishers: ["mu.example", "nu.example"], minutesAgo: 60 },
@@ -39,7 +41,10 @@ export const SEED_STORIES: SeedStory[] = [
   { key: "football", headline: "Coastal club signs a young forward from the academy", category: "football", scope: "global", countries: ["ES"], heat: 50, confidence: 40, importance: 22, publishers: ["pi.example"], minutesAgo: 90 },
 ];
 
-export const SEED_SOURCE_KEYS = { news: "e2e-news-index", official: "e2e-official" } as const;
+export const SEED_SOURCE_KEYS = { news: "e2e-news-index", official: "e2e-official", photo: "e2e-photo-desk" } as const;
+
+/** The seed picture: on an allowed asset host (next.config remotePatterns), so it is served through /_next/image. */
+export const SEED_PHOTO_URL = "https://assets.science.nasa.gov/dynamicimage/e2e/southern-sky.jpg";
 
 /** Write the seed edition. Idempotent within a run: the caller truncates first. */
 export async function seedEdition(ownerUrl: string): Promise<void> {
@@ -59,19 +64,24 @@ export async function seedEdition(ownerUrl: string): Promise<void> {
       ).rows[0]!.id;
     const newsId = await source(SEED_SOURCE_KEYS.news, "E2E News Index", "aggregator", false, false);
     const officialId = await source(SEED_SOURCE_KEYS.official, "E2E Official Bureau", "official", true, true);
+    // Cleared for media, as NASA is: its pictures are shown, credited to it.
+    const photoId = await source(SEED_SOURCE_KEYS.photo, "E2E Photo Desk", "official", true, false);
+    await client.query("update sources set media_reuse_allowed = true where id = $1", [photoId]);
 
     for (const story of SEED_STORIES) {
       const itemIds: string[] = [];
       for (const [index, publisher] of story.publishers.entries()) {
         const isOfficial = story.official && index === 0;
+        const withPhoto = story.photo && index === 0;
         const minutes = story.minutesAgo + index * 7;
         const item = await client.query<{ id: string }>(
           `insert into raw_source_items (id, source_id, provider_item_id, canonical_url, url_hash, publisher_domain, publisher_name, title, normalized_title, excerpt,
-                                         content_type, published_at, ingested_at, categories, event_countries, indian_states)
-           values (gen_random_uuid(), $1, $2, $3, md5($3), $4, $5, $6, lower($6), $7, $8, now() - make_interval(mins => $9), now() - make_interval(mins => $9 - 3), $10, $11, $12)
+                                         content_type, published_at, ingested_at, categories, event_countries, indian_states, media_url, metadata)
+           values (gen_random_uuid(), $1, $2, $3, md5($3), $4, $5, $6, lower($6), $7, $8, now() - make_interval(mins => $9), now() - make_interval(mins => $9 - 3), $10, $11, $12,
+                   $13, $14::jsonb)
            returning id`,
           [
-            isOfficial ? officialId : newsId,
+            withPhoto ? photoId : isOfficial ? officialId : newsId,
             `${story.key}-${index}`,
             `https://${publisher}/${story.key}-${index}`,
             publisher,
@@ -83,6 +93,8 @@ export async function seedEdition(ownerUrl: string): Promise<void> {
             [story.category],
             story.scope === "india" ? ["IN"] : story.countries ?? [],
             story.states ?? [],
+            withPhoto ? SEED_PHOTO_URL : null,
+            JSON.stringify(withPhoto ? { mediaAlt: "Stars over an observatory dome" } : {}),
           ],
         );
         itemIds.push(item.rows[0]!.id);

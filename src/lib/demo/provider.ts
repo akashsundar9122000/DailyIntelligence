@@ -45,6 +45,8 @@ export function sampleEdition(realCount: number, now: Date): SampleCard[] {
       firstSeenAt: at,
       lastUpdatedAt: at,
       direction: story.heat > 70 ? "rising" : "steady",
+      // A sample is never given a real photograph: it gets an illustration, as anything invented must.
+      photo: null,
       sample: true,
     };
   });

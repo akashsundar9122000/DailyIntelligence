@@ -3,6 +3,7 @@ import { XMLParser } from "fast-xml-parser";
 import { categorise } from "../classify";
 import { getFrom } from "../http";
 import { canonicalUrl, cleanTitle, domainOf, normalizeTitle, plainText } from "../normalize";
+import type { MediaCandidate } from "../media";
 import { SourceError, type IncomingItem, type Quarantined, type SourceAdapter, type SourceContext } from "../types";
 
 /**
@@ -62,6 +63,47 @@ function linkOf(item: Record<string, unknown>): string {
     return text(chosen).replace(/^<!\[CDATA\[|\]\]>$/g, "");
   }
   return text(links);
+}
+
+/** Entities in an attribute value, enough for a URL: NASA's feed writes "&#038;" between query parameters. */
+function decodeAttribute(value: string): string {
+  return value.replace(/&#0*38;|&amp;/g, "&").replace(/&#0*39;|&apos;/g, "'").replace(/&quot;/g, '"');
+}
+
+function attribute(tag: string, name: string): string | null {
+  const match = new RegExp(`\\s${name}\\s*=\\s*("([^"]*)"|'([^']*)')`, "i").exec(tag);
+  const value = match?.[2] ?? match?.[3];
+  return value ? decodeAttribute(value) : null;
+}
+
+/**
+ * The one picture a feed item offers, as a CANDIDATE for the pipeline's
+ * rule (lib/ingestion/media.ts), which decides whether it is kept. A media
+ * element first, then the first image in the item's own HTML -- with its
+ * figure caption, which is where a feed says whose picture it is.
+ */
+export function mediaOf(item: Record<string, unknown>): MediaCandidate | null {
+  for (const key of ["media:content", "media:thumbnail", "enclosure"] as const) {
+    const nodes = ([] as unknown[]).concat(item[key] ?? []);
+    for (const node of nodes) {
+      if (!node || typeof node !== "object") continue;
+      const record = node as Record<string, unknown>;
+      const url = text(record["@_url"]);
+      const type = text(record["@_type"]) || text(record["@_medium"]);
+      if (url && (key !== "enclosure" || /^image\//.test(type))) {
+        return { url: decodeAttribute(url), alt: text(record["media:description"]) || null, credit: text(record["media:credit"]) || null };
+      }
+    }
+  }
+  const html = (text(item["content:encoded"]) || text(item.description) || text(item.content)).replace(/^<!\[CDATA\[|\]\]>$/g, "");
+  const figure = /<figure\b[\s\S]*?<\/figure>/i.exec(html)?.[0];
+  const scope = figure && /<img\b/i.test(figure) ? figure : html;
+  const tag = /<img\b[^>]*>/i.exec(scope)?.[0];
+  if (!tag) return null;
+  const url = attribute(tag, "src");
+  if (!url) return null;
+  const caption = figure ? plainText(/<figcaption\b[^>]*>([\s\S]*?)<\/figcaption>/i.exec(figure)?.[1] ?? "") : "";
+  return { url, alt: attribute(tag, "alt"), credit: /credit|courtesy|©|image:/i.test(caption) ? caption.slice(0, 200) : null };
 }
 
 /** An excerpt at most `max` characters, cut at a word, from whatever summary text the item carries. */
@@ -151,6 +193,7 @@ export function parseFeed(xml: string, source: Pick<SourceContext, "canonicalDom
       indianStates: [],
       entities: [],
       metadata: {},
+      media: mediaOf(entry),
     });
   }
   return { items, quarantined };

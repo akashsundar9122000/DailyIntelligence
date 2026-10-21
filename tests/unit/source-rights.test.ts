@@ -37,8 +37,23 @@ describe("the source catalogue", () => {
     }
   });
 
-  it("re-uses no image from any source at launch", () => {
-    expect(SOURCE_CATALOGUE.filter((source) => source.rights.media)).toEqual([]);
+  /*
+   * At launch no source re-used images; since phase 7b one does (NASA, whose
+   * terms put its own imagery outside US copyright). The rule that replaced
+   * "none" is as strict: pictures only from a cleared source whose terms were
+   * read for media, on that source's own hosts -- and never from an aggregator
+   * (GDELT's images are the publishers'), a social platform or a video host,
+   * which are shown only through their own embeds.
+   */
+  it("re-uses images only from a cleared source's own hosts, and never from an aggregator, a platform or a video host", () => {
+    const withMedia = SOURCE_CATALOGUE.filter((source) => source.rights.media);
+    expect(withMedia.map((source) => source.key)).toEqual(["nasa-news"]);
+    for (const source of withMedia) {
+      expect(source.rights.status, source.key).toBe("cleared");
+      expect(source.rights.mediaHosts?.length, source.key).toBeGreaterThan(0);
+      for (const host of source.rights.mediaHosts ?? []) expect(host.endsWith(source.canonicalDomain), `${source.key}: ${host}`).toBe(true);
+      expect(["aggregator", "social", "video"], source.key).not.toContain(source.sourceType);
+    }
   });
 
   it("asks arXiv no more often than its terms allow, and GDELT no more often than it publishes", () => {

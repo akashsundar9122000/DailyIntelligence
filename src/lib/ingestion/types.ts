@@ -1,5 +1,7 @@
 import type { ContentType, Provider } from "@/lib/db/schema/news";
 
+import type { MediaCandidate } from "./media";
+
 /** One article, release, paper or post, as an adapter hands it to the pipeline. */
 export type IncomingItem = {
   /** The source's own id, or the canonical URL when it has none. */
@@ -22,6 +24,12 @@ export type IncomingItem = {
   entities: { kind: string; name: string }[];
   /** Small, safe facts worth keeping: a GDELT theme list, a feed category. Never an article body. */
   metadata: Record<string, unknown>;
+  /**
+   * A picture the feed offers with the item. A CANDIDATE: the pipeline keeps
+   * it only if acceptMedia() allows it (lib/ingestion/media.ts). Absent from
+   * adapters whose sources may never supply pictures (GDELT, posts, video).
+   */
+  media?: MediaCandidate | null;
 };
 
 export type Quarantined = { reason: string; sample: string };

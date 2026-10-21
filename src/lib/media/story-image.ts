@@ -20,8 +20,9 @@ import { INDIAN_STATES } from "@/config/regions";
 export type StoredImage = {
   kind: "photo" | "video" | "ai";
   src: string;
-  width: number;
-  height: number;
+  /** Known for stored AI images; a photo from a feed is laid out by its frame, not its size. */
+  width?: number;
+  height?: number;
   alt: string;
   /** Whose it is: "NASA", "YouTube · DD News". The kind is added to it ("Photo: NASA"). */
   credit: string;

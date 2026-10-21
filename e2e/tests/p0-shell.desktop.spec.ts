@@ -23,7 +23,8 @@ test.describe("the signed-in shell, on a wide screen", () => {
     const strip = page.getByRole("region", { name: "Edition" });
     await expect(strip).toContainText(/\d{4}/);
     await expect(strip).toContainText(/Updated \d{1,2}:\d{2} [ap]m IST/);
-    await expect(strip).toContainText("2 of 2 sources reporting");
+    // The seed has three healthy sources: the news index, the official bureau and the photo desk.
+    await expect(strip).toContainText("3 of 3 sources reporting");
   });
 
   test("remembers the edition across a reload, on the server", async ({ page }) => {

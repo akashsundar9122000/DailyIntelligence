@@ -79,13 +79,13 @@ Fetched on a schedule. Shown only as the flags allow.
 ### NASA (`nasa-news`)
 
 - **Kind:** Official · United States · provider `rss` · https://www.nasa.gov/news-release/feed/
-- **Terms read:** 2026-10-18 — https://www.nasa.gov/nasa-brand-center/images-and-media/
-- **Decision:** cleared. NASA's news releases are generally not under US copyright, and may be used factually without implying endorsement, with NASA acknowledged.
-- **May show:** headline yes · excerpt yes · AI summary yes · media no · commercial use yes
+- **Terms read:** 2026-10-21 — https://www.nasa.gov/nasa-brand-center/images-and-media/
+- **Decision:** cleared. NASA's news releases and its own imagery are generally not under US copyright, and may be used factually without implying endorsement, with NASA acknowledged. Its insignia and logos, and third parties' pictures it shows, are not used.
+- **May show:** headline yes · excerpt yes · AI summary yes · media yes · commercial use yes
 - **Attribution:** Source: NASA
 - **Retention:** with the story, until the purge job
 - **Polled:** every 30 min
-- **From the terms:** “NASA content ... generally are not subject to copyright in the United States. ... NASA content used in a factual manner that does not imply endorsement may be used without needing explicit permission. NASA should be acknowledged as the source of the material.”
+- **From the terms:** “NASA content -- images, audio, video, and media files ... -- generally are not subject to copyright in the United States. NASA content used in a factual manner that does not imply endorsement may be used without needing explicit permission. ... The NASA Insignia, Logotype, identifiers, and imagery are not in the public domain. ... NASA occasionally uses copyright-protected material of third parties with permission on its website. Those images will be marked identified as copyright protected with the name of the copyright holder.”
 
 ### US Federal Reserve Board (`federal-reserve`)
 
